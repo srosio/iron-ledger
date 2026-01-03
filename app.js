@@ -1096,28 +1096,71 @@ const IronLedger = {
 
     /**
      * Auto-fill manual context fields with fetched data
+     * Uses market correlation heuristics to determine OI and Volume trends
      */
     autoFillMarketContext(data) {
-        // Auto-fill Funding Rate
+        // Auto-fill Funding Rate (direct value)
         document.getElementById('contextFunding').value = data.lastFundingRate.toFixed(4);
 
-        // Auto-select Open Interest trend (simple heuristic - could be enhanced)
-        // Note: We don't have historical OI data, so this is a placeholder
-        // User can manually adjust after
+        // Auto-calculate Open Interest trend
+        // Heuristic: Rising OI typically accompanies strong trends with significant funding
+        // - Strong price movement + high funding rate = Rising OI (traders adding positions)
+        // - Weak movement + low funding = Flat/Falling OI (low interest)
         const oiSelect = document.getElementById('contextOI');
-        // Default to empty - user should assess this manually from their charts
-        oiSelect.value = '';
+        const priceChange = Math.abs(data.priceChangePercent);
+        const fundingRate = Math.abs(data.lastFundingRate);
 
-        // Auto-select Volume trend based on a simple heuristic
-        // If 24h change is significant, volume is likely above average
-        const volumeSelect = document.getElementById('contextVolume');
-        if (Math.abs(data.priceChangePercent) > 3) {
-            volumeSelect.value = 'above';
+        if (priceChange > 2 && fundingRate > 0.005) {
+            // Strong trend (>2% move) + significant funding (>0.005%) = Rising OI
+            // Indicates traders actively opening positions in trend direction
+            oiSelect.value = 'rising';
+            console.log('✓ OI trend: Rising (strong trend + funding)');
+        } else if (priceChange < 0.5 && fundingRate < 0.002) {
+            // Weak movement (<0.5%) + minimal funding (<0.002%) = Flat OI
+            // Low volatility and low interest indicates sideways market
+            oiSelect.value = 'flat';
+            console.log('✓ OI trend: Flat (low volatility)');
+        } else if (priceChange > 4) {
+            // Very strong move (>4%) even with normal funding = Likely rising OI
+            // Extreme volatility attracts traders
+            oiSelect.value = 'rising';
+            console.log('✓ OI trend: Rising (high volatility)');
         } else {
-            volumeSelect.value = '';
+            // Ambiguous - leave for manual assessment
+            oiSelect.value = '';
+            console.log('⚠️ OI trend: Unclear (manual input recommended)');
         }
 
-        console.log('✓ Auto-filled funding rate:', data.lastFundingRate.toFixed(4) + '%');
+        // Auto-calculate 24h Volume trend
+        // Heuristic: Compare volume to open interest and price volatility
+        // - High volume/OI ratio + volatility = Above average
+        // - Low volume/OI ratio + calm market = Below average
+        const volumeSelect = document.getElementById('contextVolume');
+        const volumeToOI = data.volume / data.openInterest;
+
+        if (priceChange > 3 || volumeToOI > 15) {
+            // High volatility (>3%) OR high volume relative to OI (>15x)
+            // Indicates active trading day - above average volume
+            volumeSelect.value = 'above';
+            console.log('✓ Volume: Above Average (high activity)');
+        } else if (priceChange < 1 && volumeToOI < 8) {
+            // Low volatility (<1%) AND low volume/OI ratio (<8x)
+            // Quiet trading day - below average volume
+            volumeSelect.value = 'below';
+            console.log('✓ Volume: Below Average (low activity)');
+        } else {
+            // Normal range - around average
+            volumeSelect.value = 'above'; // Default to above if not clearly below
+            console.log('✓ Volume: Above Average (normal activity)');
+        }
+
+        console.log('📊 Auto-fill summary:', {
+            fundingRate: data.lastFundingRate.toFixed(4) + '%',
+            priceChange: data.priceChangePercent.toFixed(2) + '%',
+            volumeToOI: volumeToOI.toFixed(2) + 'x',
+            oiTrend: oiSelect.value || 'manual',
+            volumeTrend: volumeSelect.value
+        });
     },
 
     /**
