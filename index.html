@@ -35,6 +35,7 @@
                 </div>
                 <div class="text-right">
                     <div id="currentTime" class="text-sm font-mono text-gray-300"></div>
+                    <div id="currentLocalTime" class="text-xs font-mono text-gray-500"></div>
                     <div id="sessionStatus" class="text-xs font-semibold mt-1"></div>
                 </div>
             </div>
@@ -79,20 +80,28 @@
         <section id="screen-setup" class="screen-section">
             <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
                 <h2 class="text-2xl font-bold mb-4 text-blue-400">Pre-Market Setup</h2>
-                <p class="text-sm text-gray-400 mb-6">Lock your bias and structure before trading. Cannot be changed once confirmed.</p>
+                <p class="text-sm text-gray-400 mb-6">Lock your bias and structure before trading. You can set up both sessions (max 2/day). Each setup locks when confirmed.</p>
 
-                <div id="setupLocked" class="hidden mb-6 p-4 bg-green-900 border border-green-700 rounded">
-                    <p class="font-semibold text-green-300">✓ Setup Locked for Today</p>
-                    <div id="lockedSetupInfo" class="text-sm text-gray-300 mt-2"></div>
-                </div>
+                <!-- Locked Setups Display -->
+                <div id="setupsLockedContainer" class="hidden mb-6"></div>
 
                 <form id="setupForm" class="space-y-6">
+                    <!-- Initial Balance Configuration -->
+                    <div class="bg-blue-900 border border-blue-700 p-4 rounded">
+                        <label class="block text-sm font-semibold mb-2 text-blue-300">💰 Initial Balance (Today)</label>
+                        <input type="number" id="setupInitialBalance" step="0.01" min="0"
+                               class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100"
+                               placeholder="e.g., 10000">
+                        <p class="text-xs text-gray-400 mt-1">Set your starting balance for risk calculations. This persists for the trading day.</p>
+                    </div>
+
                     <!-- Date -->
                     <div>
                         <label class="block text-sm font-semibold mb-2">Date</label>
                         <input type="date" id="setupDate"
                                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100"
                                required readonly>
+                        <p id="setupLocalDate" class="text-xs text-gray-500 mt-1"></p>
                     </div>
 
                     <!-- Session -->
@@ -105,6 +114,7 @@
                             <option value="london">London (08:00-12:00 UTC)</option>
                             <option value="newyork">New York (13:00-17:00 UTC)</option>
                         </select>
+                        <p class="text-xs text-yellow-400 mt-1">ℹ️ You can set up both sessions. Each locks separately.</p>
                     </div>
 
                     <!-- 15M Bias -->

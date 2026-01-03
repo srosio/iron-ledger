@@ -150,8 +150,14 @@ const IronLedger = {
      */
     updateStatusBar() {
         const now = new Date();
+
+        // UTC time
         const utcTime = now.toISOString().substr(11, 8) + ' UTC';
         document.getElementById('currentTime').textContent = utcTime;
+
+        // Local time
+        const localTime = now.toLocaleTimeString() + ' (Local)';
+        document.getElementById('currentLocalTime').textContent = localTime;
 
         const sessionStatus = this.getSessionStatus();
         const statusEl = document.getElementById('sessionStatus');
@@ -198,30 +204,24 @@ const IronLedger = {
         const today = this.getToday();
         const reasons = [];
 
-        // 1. Check if setup is locked for today
-        if (!this.state.sessions[today]) {
-            reasons.push('Pre-market setup not completed');
-        }
-
-        // 2. Check if bias is neutral
-        if (this.state.sessions[today]?.bias === 'neutral') {
-            reasons.push('Bias is Neutral - trading disabled');
-        }
-
-        // 3. Check session time
+        // 1. Check session time first to know which session we're in
         const sessionStatus = this.getSessionStatus();
         if (!sessionStatus.allowed) {
             reasons.push('Outside trading hours');
         }
 
-        // 4. Check if session matches setup
-        if (this.state.sessions[today] && sessionStatus.session) {
-            const setupSession = this.state.sessions[today].session;
-            if (setupSession === 'london' && sessionStatus.session !== 'London') {
-                reasons.push('Not in locked session (London)');
+        // 2. Check if setup is locked for the CURRENT session
+        if (sessionStatus.session) {
+            const currentSessionKey = `${today}_${sessionStatus.session.toLowerCase()}`;
+            const sessionSetup = this.state.sessions[currentSessionKey];
+
+            if (!sessionSetup) {
+                reasons.push(`Pre-market setup not completed for ${sessionStatus.session} session`);
             }
-            if (setupSession === 'newyork' && sessionStatus.session !== 'New York') {
-                reasons.push('Not in locked session (New York)');
+
+            // 3. Check if bias is neutral for this session
+            if (sessionSetup?.bias === 'neutral') {
+                reasons.push('Bias is Neutral - trading disabled');
             }
         }
 
@@ -328,37 +328,95 @@ const IronLedger = {
     updateSetupScreen() {
         const today = this.getToday();
         const setupForm = document.getElementById('setupForm');
-        const setupLocked = document.getElementById('setupLocked');
-        const lockedInfo = document.getElementById('lockedSetupInfo');
+        const setupsLockedContainer = document.getElementById('setupsLockedContainer');
 
-        if (this.state.sessions[today]) {
-            // Already locked
-            setupForm.classList.add('hidden');
-            setupLocked.classList.remove('hidden');
+        // Check for locked sessions today
+        const londonKey = `${today}_london`;
+        const newyorkKey = `${today}_newyork`;
+        const londonSetup = this.state.sessions[londonKey];
+        const newyorkSetup = this.state.sessions[newyorkKey];
 
-            const session = this.state.sessions[today];
-            lockedInfo.innerHTML = `
-                <p><strong>Session:</strong> ${session.session === 'london' ? 'London' : 'New York'}</p>
-                <p><strong>Bias:</strong> ${session.bias.toUpperCase()}</p>
-                <p class="text-xs mt-2 text-gray-400">Setup cannot be changed. Reset available tomorrow.</p>
-            `;
+        // Display locked setups
+        if (londonSetup || newyorkSetup) {
+            setupsLockedContainer.classList.remove('hidden');
+            let lockedHTML = '';
+
+            if (londonSetup) {
+                lockedHTML += `
+                    <div class="p-4 bg-green-900 border border-green-700 rounded mb-3">
+                        <p class="font-semibold text-green-300">✓ London Session Locked</p>
+                        <div class="text-sm text-gray-300 mt-2">
+                            <p><strong>Bias:</strong> ${londonSetup.bias.toUpperCase()}</p>
+                            <p class="text-xs text-gray-400 mt-1">Locked at ${new Date(londonSetup.lockedAt).toLocaleString()}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (newyorkSetup) {
+                lockedHTML += `
+                    <div class="p-4 bg-green-900 border border-green-700 rounded">
+                        <p class="font-semibold text-green-300">✓ New York Session Locked</p>
+                        <div class="text-sm text-gray-300 mt-2">
+                            <p><strong>Bias:</strong> ${newyorkSetup.bias.toUpperCase()}</p>
+                            <p class="text-xs text-gray-400 mt-1">Locked at ${new Date(newyorkSetup.lockedAt).toLocaleString()}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            setupsLockedContainer.innerHTML = lockedHTML;
+
+            // If both sessions locked, hide form
+            if (londonSetup && newyorkSetup) {
+                setupForm.classList.add('hidden');
+            } else {
+                setupForm.classList.remove('hidden');
+            }
         } else {
+            setupsLockedContainer.classList.add('hidden');
             setupForm.classList.remove('hidden');
-            setupLocked.classList.add('hidden');
+        }
+
+        // Set initial balance if saved for today
+        const initialBalanceInput = document.getElementById('setupInitialBalance');
+        if (this.state.config.initialBalance) {
+            initialBalanceInput.value = this.state.config.initialBalance;
+        }
+
+        // Display local date
+        const localDateEl = document.getElementById('setupLocalDate');
+        if (localDateEl) {
+            const localDate = new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            localDateEl.textContent = localDate;
         }
     },
 
     lockSetup() {
         const today = this.getToday();
+        const session = document.getElementById('setupSession').value;
 
-        // Check if already locked
-        if (this.state.sessions[today]) {
-            alert('⚠️ Setup already locked for today!');
+        // Create unique key for this session
+        const sessionKey = `${today}_${session}`;
+
+        // Check if this specific session is already locked
+        if (this.state.sessions[sessionKey]) {
+            alert(`⚠️ ${session === 'london' ? 'London' : 'New York'} session already locked for today!`);
             return;
         }
 
+        // Save initial balance (applies to all setups for the day)
+        const initialBalance = parseFloat(document.getElementById('setupInitialBalance').value);
+        if (initialBalance && initialBalance > 0) {
+            this.state.config.initialBalance = initialBalance;
+        }
+
         // Gather all data
-        const session = document.getElementById('setupSession').value;
         const bias = document.getElementById('setupBias').value;
 
         const levels = {
@@ -385,8 +443,8 @@ const IronLedger = {
             volume: document.getElementById('contextVolume').value || null
         };
 
-        // Save to state
-        this.state.sessions[today] = {
+        // Save to state using unique session key
+        this.state.sessions[sessionKey] = {
             date: today,
             session,
             bias,
@@ -398,7 +456,7 @@ const IronLedger = {
 
         this.saveState();
 
-        alert('✅ Setup locked! Cannot be changed for today.');
+        alert(`✅ ${session === 'london' ? 'London' : 'New York'} session setup locked!\n\nYou can still set up the other session if needed.`);
         this.updateSetupScreen();
     },
 
@@ -466,13 +524,31 @@ const IronLedger = {
 
         // Today's setup
         const setupDisplay = document.getElementById('todaySetupDisplay');
-        if (this.state.sessions[today]) {
-            const s = this.state.sessions[today];
-            setupDisplay.innerHTML = `
-                <p><strong>Session:</strong> ${s.session === 'london' ? 'London' : 'New York'}</p>
-                <p><strong>Bias:</strong> ${s.bias.toUpperCase()}</p>
-                <p class="text-xs text-gray-400 mt-2">Locked at ${new Date(s.lockedAt).toLocaleTimeString()}</p>
+        const londonKey = `${today}_london`;
+        const newyorkKey = `${today}_newyork`;
+        const londonSetup = this.state.sessions[londonKey];
+        const newyorkSetup = this.state.sessions[newyorkKey];
+
+        let setupHTML = '';
+        if (londonSetup) {
+            setupHTML += `
+                <div class="mb-3">
+                    <p><strong>London Session:</strong> ${londonSetup.bias.toUpperCase()}</p>
+                    <p class="text-xs text-gray-400">Locked at ${new Date(londonSetup.lockedAt).toLocaleString()}</p>
+                </div>
             `;
+        }
+        if (newyorkSetup) {
+            setupHTML += `
+                <div>
+                    <p><strong>New York Session:</strong> ${newyorkSetup.bias.toUpperCase()}</p>
+                    <p class="text-xs text-gray-400">Locked at ${new Date(newyorkSetup.lockedAt).toLocaleString()}</p>
+                </div>
+            `;
+        }
+
+        if (setupHTML) {
+            setupDisplay.innerHTML = setupHTML;
         } else {
             setupDisplay.innerHTML = '<p class="text-gray-500">No setup for today</p>';
         }
@@ -622,12 +698,16 @@ const IronLedger = {
 
         // Gather all trade data
         const today = this.getToday();
+        const sessionStatus = this.getSessionStatus();
+        const currentSessionKey = `${today}_${sessionStatus.session.toLowerCase()}`;
+        const sessionSetup = this.state.sessions[currentSessionKey];
+
         const tradeData = {
             id: 'trade_' + Date.now(),
             timestamp: Date.now(),
             date: today,
-            session: this.state.sessions[today].session,
-            bias: this.state.sessions[today].bias,
+            session: sessionSetup.session,
+            bias: sessionSetup.bias,
 
             // Structure
             structure: {
