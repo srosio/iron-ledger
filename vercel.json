@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/binance-proxy.js": {
+      "regions": ["sin1"]
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
