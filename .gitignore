@@ -1,0 +1,28 @@
+# IronLedger .gitignore
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Optional: If we ever add build tools
+node_modules/
+dist/
+.cache/
+
+# Environment files (if we add any)
+.env
+.env.local
+
+# Testing
+coverage/

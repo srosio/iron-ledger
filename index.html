@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IronLedger - Trading Discipline Console</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        /* Animations */
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .pulse-red { animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+        /* Hidden by default */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-blue-400">⚖️ IronLedger</h1>
+                    <p class="text-xs text-gray-400">Trading Discipline Enforcement System</p>
+                </div>
+                <div class="text-right">
+                    <div id="currentTime" class="text-sm font-mono text-gray-300"></div>
+                    <div id="sessionStatus" class="text-xs font-semibold mt-1"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-6 max-w-7xl">
+
+        <!-- Navigation Tabs -->
+        <nav class="mb-6 flex gap-2 flex-wrap">
+            <button onclick="IronLedger.showScreen('setup')"
+                    class="tab-btn px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 transition"
+                    data-screen="setup">
+                📋 Pre-Market Setup
+            </button>
+            <button onclick="IronLedger.showScreen('status')"
+                    class="tab-btn px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 transition"
+                    data-screen="status">
+                ⚡ Trade Status
+            </button>
+            <button onclick="IronLedger.showScreen('confirm')"
+                    class="tab-btn px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 transition"
+                    data-screen="confirm">
+                ✅ Trade Confirmation
+            </button>
+            <button onclick="IronLedger.showScreen('log')"
+                    class="tab-btn px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 transition"
+                    data-screen="log">
+                📝 Post-Trade Log
+            </button>
+            <button onclick="IronLedger.showScreen('review')"
+                    class="tab-btn px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 transition"
+                    data-screen="review">
+                📊 Review
+            </button>
+        </nav>
+
+        <!-- ========================================
+             SCREEN 1: PRE-MARKET SETUP
+             ======================================== -->
+        <section id="screen-setup" class="screen-section">
+            <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                <h2 class="text-2xl font-bold mb-4 text-blue-400">Pre-Market Setup</h2>
+                <p class="text-sm text-gray-400 mb-6">Lock your bias and structure before trading. Cannot be changed once confirmed.</p>
+
+                <div id="setupLocked" class="hidden mb-6 p-4 bg-green-900 border border-green-700 rounded">
+                    <p class="font-semibold text-green-300">✓ Setup Locked for Today</p>
+                    <div id="lockedSetupInfo" class="text-sm text-gray-300 mt-2"></div>
+                </div>
+
+                <form id="setupForm" class="space-y-6">
+                    <!-- Date -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Date</label>
+                        <input type="date" id="setupDate"
+                               class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100"
+                               required readonly>
+                    </div>
+
+                    <!-- Session -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Session *</label>
+                        <select id="setupSession"
+                                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100"
+                                required>
+                            <option value="">Select Session</option>
+                            <option value="london">London (08:00-12:00 UTC)</option>
+                            <option value="newyork">New York (13:00-17:00 UTC)</option>
+                        </select>
+                    </div>
+
+                    <!-- 15M Bias -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">15M Bias *</label>
+                        <select id="setupBias"
+                                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100"
+                                required>
+                            <option value="">Select Bias</option>
+                            <option value="bullish">Bullish</option>
+                            <option value="bearish">Bearish</option>
+                            <option value="neutral">Neutral (Trading Disabled)</option>
+                        </select>
+                        <p class="text-xs text-yellow-400 mt-1">⚠️ If Neutral, all trading will be disabled</p>
+                    </div>
+
+                    <!-- Key Levels -->
+                    <div class="bg-gray-700 p-4 rounded">
+                        <h3 class="font-semibold mb-3 text-blue-300">Key Levels</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs mb-1">Yesterday High</label>
+                                <input type="number" id="levelYesterdayHigh" step="0.01"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">Yesterday Low</label>
+                                <input type="number" id="levelYesterdayLow" step="0.01"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">Yesterday Close</label>
+                                <input type="number" id="levelYesterdayClose" step="0.01"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">Asian High</label>
+                                <input type="number" id="levelAsianHigh" step="0.01"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">Asian Low</label>
+                                <input type="number" id="levelAsianLow" step="0.01"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">Weekly High</label>
+                                <input type="number" id="levelWeeklyHigh" step="0.01"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">Weekly Low</label>
+                                <input type="number" id="levelWeeklyLow" step="0.01"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">Previous Week High</label>
+                                <input type="number" id="levelPrevWeekHigh" step="0.01"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">Previous Week Low</label>
+                                <input type="number" id="levelPrevWeekLow" step="0.01"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Liquidity Pools -->
+                    <div class="bg-gray-700 p-4 rounded">
+                        <h3 class="font-semibold mb-3 text-blue-300">Liquidity Pools</h3>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block text-xs mb-1">Equal Highs (comma-separated prices)</label>
+                                <input type="text" id="liquidityEqualHighs" placeholder="e.g., 42000, 41500"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">Equal Lows (comma-separated prices)</label>
+                                <input type="text" id="liquidityEqualLows" placeholder="e.g., 40000, 39500"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">Psychological Levels (comma-separated)</label>
+                                <input type="text" id="liquidityPsych" placeholder="e.g., 40000, 41000"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Market Context -->
+                    <div class="bg-gray-700 p-4 rounded">
+                        <h3 class="font-semibold mb-3 text-blue-300">Market Context</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs mb-1">Funding Rate (%)</label>
+                                <input type="number" id="contextFunding" step="0.01" placeholder="e.g., 0.01"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">Open Interest</label>
+                                <select id="contextOI"
+                                        class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                                    <option value="">Select</option>
+                                    <option value="rising">Rising</option>
+                                    <option value="falling">Falling</option>
+                                    <option value="flat">Flat</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">24h Volume</label>
+                                <select id="contextVolume"
+                                        class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
+                                    <option value="">Select</option>
+                                    <option value="above">Above Average</option>
+                                    <option value="below">Below Average</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition">
+                        🔒 LOCK SETUP (Cannot be changed)
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ========================================
+             SCREEN 2: TRADE ELIGIBILITY STATUS
+             ======================================== -->
+        <section id="screen-status" class="screen-section hidden">
+            <div class="space-y-6">
+                <!-- Status Header -->
+                <div id="statusHeader" class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4 text-blue-400">Trade Eligibility Status</h2>
+
+                    <!-- Lock/Suspension Alert -->
+                    <div id="lockAlert" class="hidden mb-4 p-4 bg-red-900 border border-red-700 rounded pulse-red">
+                        <p class="font-bold text-red-300 text-lg">🚫 TRADING LOCKED</p>
+                        <p id="lockReason" class="text-sm text-gray-300 mt-2"></p>
+                    </div>
+
+                    <!-- Status Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div class="bg-gray-700 p-4 rounded">
+                            <p class="text-xs text-gray-400 mb-1">Current UTC Time</p>
+                            <p id="statusTime" class="text-xl font-mono font-bold"></p>
+                        </div>
+                        <div class="bg-gray-700 p-4 rounded">
+                            <p class="text-xs text-gray-400 mb-1">Session Status</p>
+                            <p id="statusSessionStatus" class="text-xl font-bold"></p>
+                        </div>
+                        <div class="bg-gray-700 p-4 rounded">
+                            <p class="text-xs text-gray-400 mb-1">Active Bias</p>
+                            <p id="statusBias" class="text-xl font-bold"></p>
+                        </div>
+                        <div class="bg-gray-700 p-4 rounded">
+                            <p class="text-xs text-gray-400 mb-1">Trades Today</p>
+                            <p id="statusTradesToday" class="text-xl font-bold"></p>
+                        </div>
+                        <div class="bg-gray-700 p-4 rounded">
+                            <p class="text-xs text-gray-400 mb-1">Trades This Week</p>
+                            <p id="statusTradesWeek" class="text-xl font-bold"></p>
+                        </div>
+                        <div class="bg-gray-700 p-4 rounded">
+                            <p class="text-xs text-gray-400 mb-1">Cooldown Status</p>
+                            <p id="statusCooldown" class="text-xl font-bold"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Setup -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h3 class="text-lg font-bold mb-3 text-blue-300">Today's Setup</h3>
+                    <div id="todaySetupDisplay" class="text-sm text-gray-300"></div>
+                </div>
+
+                <!-- Active Trades -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h3 class="text-lg font-bold mb-3 text-blue-300">Active Trades</h3>
+                    <div id="activeTradesDisplay" class="text-sm text-gray-300"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================
+             SCREEN 3: TRADE CONFIRMATION CHECKLIST
+             ======================================== -->
+        <section id="screen-confirm" class="screen-section hidden">
+            <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                <h2 class="text-2xl font-bold mb-4 text-blue-400">Trade Confirmation Checklist</h2>
+                <p class="text-sm text-gray-400 mb-6">All conditions must be met to confirm a trade.</p>
+
+                <!-- Pre-Check Warnings -->
+                <div id="confirmBlocker" class="hidden mb-6 p-4 bg-red-900 border border-red-700 rounded">
+                    <p class="font-bold text-red-300">⛔ Trade Confirmation Blocked</p>
+                    <p id="confirmBlockerReason" class="text-sm text-gray-300 mt-2"></p>
+                </div>
+
+                <form id="confirmForm" class="space-y-6">
+
+                    <!-- SECTION A: STRUCTURE CONFIRMATION -->
+                    <div class="bg-gray-700 p-4 rounded">
+                        <h3 class="font-bold text-lg mb-4 text-yellow-300">A. Structure Confirmation</h3>
+                        <div class="space-y-3">
+                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                <input type="checkbox" class="mt-1 structure-check" data-rule="biasAlign" required>
+                                <span class="text-sm">15M bias aligns with trade direction</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                <input type="checkbox" class="mt-1 structure-check" data-rule="liquiditySweep" required>
+                                <span class="text-sm">Liquidity sweep occurred</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                <input type="checkbox" class="mt-1 structure-check" data-rule="sweepDepth" required>
+                                <span class="text-sm">Sweep depth between 0.2% and 1%</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                <input type="checkbox" class="mt-1 structure-check" data-rule="closedInside" required>
+                                <span class="text-sm">Price closed back inside range</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                <input type="checkbox" class="mt-1 structure-check" data-rule="volumeSpike" required>
+                                <span class="text-sm">Volume spike visible</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                <input type="checkbox" class="mt-1 structure-check" data-rule="bosBreak" required>
+                                <span class="text-sm">5M break of structure ≥0.3%</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                <input type="checkbox" class="mt-1 structure-check" data-rule="imbalance" required>
+                                <span class="text-sm">Imbalance (FVG) created</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                <input type="checkbox" class="mt-1 structure-check" data-rule="firstPullback" required>
+                                <span class="text-sm">Entry is first pullback only</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- SECTION B: DELTA CONFIRMATION -->
+                    <div class="bg-gray-700 p-4 rounded">
+                        <h3 class="font-bold text-lg mb-4 text-yellow-300">B. Delta Confirmation</h3>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm mb-1">BOS Candle Delta</label>
+                                    <input type="number" id="deltaBosCandleDelta" step="0.01"
+                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm mb-1">Pullback Delta Retrace %</label>
+                                    <input type="number" id="deltaPullbackRetrace" step="0.1" max="30"
+                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                                    <p class="text-xs text-gray-400 mt-1">Must be &lt;30%</p>
+                                </div>
+                            </div>
+                            <div class="space-y-3 mt-4">
+                                <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                    <input type="checkbox" class="mt-1 delta-check" data-rule="deltaDivergence" required>
+                                    <span class="text-sm">Delta divergence present</span>
+                                </label>
+                                <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                    <input type="checkbox" class="mt-1 delta-check" data-rule="deltaThreshold" required>
+                                    <span class="text-sm">Delta threshold met</span>
+                                </label>
+                                <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                    <input type="checkbox" class="mt-1 delta-check" data-rule="pullbackValid" required>
+                                    <span class="text-sm">Pullback delta validated</span>
+                                </label>
+                                <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                    <input type="checkbox" class="mt-1 delta-check" data-rule="noOpposingDelta" required>
+                                    <span class="text-sm">No aggressive opposing delta</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION C: RISK & POSITION CALCULATOR -->
+                    <div class="bg-gray-700 p-4 rounded">
+                        <h3 class="font-bold text-lg mb-4 text-yellow-300">C. Risk & Position Calculator</h3>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm mb-1">Account Size ($)</label>
+                                    <input type="number" id="riskAccountSize" step="0.01"
+                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm mb-1">Risk % (Max varies by settings)</label>
+                                    <input type="number" id="riskPercent" step="0.1" max="1" value="1"
+                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm mb-1">Trade Direction</label>
+                                    <select id="riskDirection"
+                                            class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                                        <option value="">Select</option>
+                                        <option value="long">Long</option>
+                                        <option value="short">Short</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm mb-1">Entry Price</label>
+                                    <input type="number" id="riskEntryPrice" step="0.01"
+                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm mb-1">Sweep Candle High</label>
+                                    <input type="number" id="riskSweepHigh" step="0.01"
+                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm mb-1">Sweep Candle Low</label>
+                                    <input type="number" id="riskSweepLow" step="0.01"
+                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                                </div>
+                            </div>
+
+                            <button type="button" onclick="IronLedger.calculateRisk()"
+                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded transition">
+                                Calculate Position
+                            </button>
+
+                            <!-- Results -->
+                            <div id="riskResults" class="hidden mt-4 p-4 bg-gray-600 rounded border-l-4">
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                                    <div>
+                                        <p class="text-gray-400">Stop Loss</p>
+                                        <p id="riskStopLoss" class="font-bold"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-400">Stop Distance</p>
+                                        <p id="riskStopDistance" class="font-bold"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-400">Dollar Risk</p>
+                                        <p id="riskDollarRisk" class="font-bold"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-400">Position Size</p>
+                                        <p id="riskPositionSize" class="font-bold"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-400">Required Leverage</p>
+                                        <p id="riskLeverage" class="font-bold"></p>
+                                    </div>
+                                </div>
+                                <div id="riskWarnings" class="mt-3 text-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION D: EXECUTION CONFIRMATION -->
+                    <div class="bg-gray-700 p-4 rounded">
+                        <h3 class="font-bold text-lg mb-4 text-yellow-300">D. Execution Confirmation</h3>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm mb-1">TP1 at 1.5R</label>
+                                    <input type="number" id="execTP1" step="0.01"
+                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm mb-1">TP2 (Opposing Liquidity/Structure)</label>
+                                    <input type="number" id="execTP2" step="0.01"
+                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm mb-1">Emotional State</label>
+                                    <select id="execEmotional"
+                                            class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                                        <option value="">Select</option>
+                                        <option value="calm">Calm</option>
+                                        <option value="confident">Confident</option>
+                                        <option value="anxious">Anxious</option>
+                                        <option value="impatient">Impatient</option>
+                                        <option value="fomo">FOMO</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm mb-1">Setup Quality</label>
+                                    <select id="execQuality"
+                                            class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                                        <option value="">Select</option>
+                                        <option value="A">A - Perfect</option>
+                                        <option value="B">B - Good</option>
+                                        <option value="C">C - Acceptable</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                <input type="checkbox" id="execStopConfirm" class="mt-1" required>
+                                <span class="text-sm">Mechanical stop placement confirmed (no discretion)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="confirmTradeBtn"
+                            class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded transition text-lg">
+                        ✅ CONFIRM TRADE
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ========================================
+             SCREEN 4: POST-TRADE LOG
+             ======================================== -->
+        <section id="screen-log" class="screen-section hidden">
+            <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                <h2 class="text-2xl font-bold mb-4 text-blue-400">Post-Trade Log</h2>
+                <p class="text-sm text-gray-400 mb-6">Complete this log after trade exit. Trade is not complete until logged.</p>
+
+                <div id="logNoTrades" class="p-4 bg-gray-700 rounded text-center text-gray-400">
+                    No active trades to log.
+                </div>
+
+                <div id="logTradeSelector" class="hidden mb-6">
+                    <label class="block text-sm font-semibold mb-2">Select Trade to Log</label>
+                    <select id="logTradeSelect"
+                            class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100">
+                    </select>
+                </div>
+
+                <form id="logForm" class="hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Outcome *</label>
+                            <select id="logOutcome"
+                                    class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2" required>
+                                <option value="">Select</option>
+                                <option value="win">Win</option>
+                                <option value="loss">Loss</option>
+                                <option value="breakeven">Breakeven</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">P&L ($) *</label>
+                            <input type="number" id="logPnL" step="0.01"
+                                   class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2" required>
+                        </div>
+                    </div>
+
+                    <!-- Execution Ratings -->
+                    <div class="bg-gray-700 p-4 rounded">
+                        <h3 class="font-semibold mb-3 text-blue-300">Execution Ratings (1-5)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs mb-1">Entry Quality</label>
+                                <input type="number" id="logRatingEntry" min="1" max="5"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">Stop Discipline</label>
+                                <input type="number" id="logRatingStop" min="1" max="5"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs mb-1">Exit Quality</label>
+                                <input type="number" id="logRatingExit" min="1" max="5"
+                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Screenshot -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Screenshot (optional)</label>
+                        <input type="file" id="logScreenshot" accept="image/*"
+                               class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm">
+                        <p class="text-xs text-gray-400 mt-1">Upload chart screenshot for review</p>
+                    </div>
+
+                    <!-- Emotional Notes -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Emotional Notes & Observations *</label>
+                        <textarea id="logNotes" rows="4"
+                                  class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2"
+                                  placeholder="What did you feel? What would you do differently? Any lessons learned?"
+                                  required></textarea>
+                    </div>
+
+                    <button type="submit"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition">
+                        📝 COMPLETE TRADE LOG
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ========================================
+             SCREEN 5: REVIEW DASHBOARD
+             ======================================== -->
+        <section id="screen-review" class="screen-section hidden">
+            <div class="space-y-6">
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4 text-blue-400">Review Dashboard</h2>
+
+                    <!-- Daily Stats -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-bold mb-3 text-yellow-300">Daily Performance</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-gray-700 p-3 rounded">
+                                <p class="text-xs text-gray-400">Trades Today</p>
+                                <p id="reviewDailyTrades" class="text-2xl font-bold"></p>
+                            </div>
+                            <div class="bg-gray-700 p-3 rounded">
+                                <p class="text-xs text-gray-400">Compliance %</p>
+                                <p id="reviewDailyCompliance" class="text-2xl font-bold"></p>
+                            </div>
+                            <div class="bg-gray-700 p-3 rounded">
+                                <p class="text-xs text-gray-400">P&L Today</p>
+                                <p id="reviewDailyPnL" class="text-2xl font-bold"></p>
+                            </div>
+                            <div class="bg-gray-700 p-3 rounded">
+                                <p class="text-xs text-gray-400">Active Locks</p>
+                                <p id="reviewDailyLocks" class="text-2xl font-bold"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Stats -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-bold mb-3 text-yellow-300">Weekly Performance</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                            <div class="bg-gray-700 p-3 rounded">
+                                <p class="text-xs text-gray-400">Trades This Week</p>
+                                <p id="reviewWeeklyTrades" class="text-2xl font-bold"></p>
+                            </div>
+                            <div class="bg-gray-700 p-3 rounded">
+                                <p class="text-xs text-gray-400">Win Rate</p>
+                                <p id="reviewWeeklyWinRate" class="text-2xl font-bold"></p>
+                            </div>
+                            <div class="bg-gray-700 p-3 rounded">
+                                <p class="text-xs text-gray-400">Avg Win</p>
+                                <p id="reviewWeeklyAvgWin" class="text-2xl font-bold"></p>
+                            </div>
+                            <div class="bg-gray-700 p-3 rounded">
+                                <p class="text-xs text-gray-400">Avg Loss</p>
+                                <p id="reviewWeeklyAvgLoss" class="text-2xl font-bold"></p>
+                            </div>
+                            <div class="bg-gray-700 p-3 rounded">
+                                <p class="text-xs text-gray-400">Expectancy</p>
+                                <p id="reviewWeeklyExpectancy" class="text-2xl font-bold"></p>
+                            </div>
+                            <div class="bg-gray-700 p-3 rounded">
+                                <p class="text-xs text-gray-400">R:R Achieved</p>
+                                <p id="reviewWeeklyRR" class="text-2xl font-bold"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Session Performance -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-bold mb-3 text-yellow-300">Session Breakdown</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-gray-700 p-4 rounded">
+                                <p class="text-sm text-gray-300 mb-2">London Session</p>
+                                <div id="reviewSessionLondon" class="text-sm"></div>
+                            </div>
+                            <div class="bg-gray-700 p-4 rounded">
+                                <p class="text-sm text-gray-300 mb-2">New York Session</p>
+                                <div id="reviewSessionNY" class="text-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Most Violated Rule -->
+                    <div class="bg-gray-700 p-4 rounded">
+                        <h3 class="text-lg font-bold mb-3 text-red-300">Most Violated Rule</h3>
+                        <p id="reviewViolatedRule" class="text-sm text-gray-300"></p>
+                    </div>
+
+                    <!-- Trade Log Table -->
+                    <div class="mt-6">
+                        <h3 class="text-lg font-bold mb-3 text-yellow-300">Recent Trades</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-700">
+                                    <tr>
+                                        <th class="p-2 text-left">Date</th>
+                                        <th class="p-2 text-left">Session</th>
+                                        <th class="p-2 text-left">Direction</th>
+                                        <th class="p-2 text-left">Outcome</th>
+                                        <th class="p-2 text-left">P&L</th>
+                                        <th class="p-2 text-left">Quality</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reviewTradeTable" class="divide-y divide-gray-700">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 border-t border-gray-700 mt-12 py-4">
+        <div class="container mx-auto px-4 text-center text-sm text-gray-400">
+            <p>IronLedger v1.0 - Trading Discipline Enforcement System</p>
+            <p class="text-xs mt-1">This system enforces rules. It does not generate signals or automate execution.</p>
+        </div>
+    </footer>
+
+    <!-- Core Application Logic -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
