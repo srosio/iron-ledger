@@ -354,10 +354,114 @@ Host on any static file server:
 
 ---
 
+## 📡 Market Context Fetch (Optional Feature)
+
+### Overview
+IronLedger includes an **optional** market context fetch feature that retrieves live data from Binance Futures API. This feature is:
+- **Informational only** - does NOT affect trade enforcement
+- **Completely optional** - manual input always available
+- **Non-blocking** - fetch failures do not prevent trading
+
+### CORS Issue & Solution
+
+**Problem**: Binance API does not enable CORS (Cross-Origin Resource Sharing) for direct browser requests. This is a browser security restriction.
+
+**Why it works in Insomnia/Postman**: API testing tools don't enforce CORS policies that browsers do.
+
+**Solution Implemented**: The app uses a **CORS proxy** by default:
+```javascript
+// In app.js line 972
+const useCorsProxy = true;
+const corsProxy = 'https://api.allorigins.win/raw?url=';
+```
+
+### CORS Proxy Options
+
+**Current (Default): AllOrigins**
+- URL: `https://api.allorigins.win/raw?url=`
+- Free, open-source, rate-limited
+- Works immediately in browser
+- Best for: Development, testing, personal use
+
+**Alternative Proxies**:
+1. **corsproxy.io**: `https://corsproxy.io/?`
+2. **cors-anywhere**: Self-hosted option
+3. **Cloudflare Workers**: Custom serverless proxy (recommended for production)
+
+### Production Deployment Options
+
+For production use, consider these approaches:
+
+**Option 1: Serverless Function Proxy (Recommended)**
+```javascript
+// Example Cloudflare Worker
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    const binanceUrl = url.searchParams.get('url');
+    const response = await fetch(binanceUrl);
+    return new Response(await response.text(), {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      }
+    });
+  }
+}
+```
+
+**Option 2: Backend Proxy**
+Set `useCorsProxy = false` and add a backend endpoint:
+```
+GET /api/binance-proxy?endpoint=/fapi/v1/premiumIndex?symbol=BTCUSDT
+```
+
+**Option 3: Disable Fetch (Manual Only)**
+Simply don't use the fetch button. Manual input fields work independently.
+
+### Configuration
+
+To change CORS proxy in `app.js` (line 972):
+```javascript
+// Use different proxy
+const corsProxy = 'https://corsproxy.io/?';
+
+// Or disable proxy (requires backend)
+const useCorsProxy = false;
+```
+
+### Rate Limits
+- **AllOrigins**: ~10 requests/second (shared)
+- **Binance Direct**: 1200 requests/minute per IP (if CORS enabled)
+- **Manual fetch**: Click-triggered only, no auto-polling
+
+### Troubleshooting
+
+**Error: "Data unavailable"**
+1. Check browser console for specific error
+2. Verify internet connection
+3. Try alternative CORS proxy
+4. Use manual input as fallback
+
+**Error: "Network request failed"**
+- CORS proxy might be down
+- Switch to alternative proxy
+- Check if symbol is valid
+
+**Slow Response**
+- CORS proxy adds latency (~1-3 seconds)
+- Normal for free proxies
+- Consider serverless function for production
+
+---
+
 ## 🔐 Security Notes
 
 - All data stored locally in browser
-- No external API calls
+- Optional external API calls (Binance Futures via CORS proxy)
+  - Only fetches public market data
+  - No authentication required
+  - No trading credentials involved
 - No user authentication (single-user application)
 - No sensitive data transmission
 - Screenshots stored as base64 in LocalStorage (consider size limits)

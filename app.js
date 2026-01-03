@@ -955,10 +955,28 @@ const IronLedger = {
     /**
      * Generic Binance API fetch wrapper
      * Uses public API endpoints only
+     *
+     * CORS NOTE: Binance does not enable CORS for browser requests.
+     * Options to fix this:
+     * 1. Use CORS proxy (enabled by default for client-side apps)
+     * 2. Host with a backend proxy (recommended for production)
+     * 3. Use serverless functions (Cloudflare Workers, Netlify Functions)
+     *
+     * To disable CORS proxy and use direct fetch (only works if hosted with backend):
+     * Set useCorsProxy to false in config below
      */
     async fetchBinance(endpoint) {
+        // CORS proxy configuration
+        // Using allOrigins.win - a free, open CORS proxy
+        // Alternative: 'https://corsproxy.io/?'
+        const useCorsProxy = true; // Set to false if you have a backend proxy
+        const corsProxy = 'https://api.allorigins.win/raw?url=';
+
         const baseUrl = 'https://fapi.binance.com';
-        const response = await fetch(baseUrl + endpoint);
+        const fullUrl = baseUrl + endpoint;
+        const fetchUrl = useCorsProxy ? corsProxy + encodeURIComponent(fullUrl) : fullUrl;
+
+        const response = await fetch(fetchUrl);
 
         if (!response.ok) {
             throw new Error(`Binance API error: ${response.status} ${response.statusText}`);
