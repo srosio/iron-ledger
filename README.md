@@ -392,15 +392,49 @@ const corsProxy = 'https://api.allorigins.win/raw?url=';
 
 For production use, consider these approaches:
 
-**Option 1: Serverless Function Proxy (Recommended)**
+**Option 1: Vercel Serverless Function (RECOMMENDED - Already Included!)**
+
+The project includes a Vercel serverless function at `/api/binance-proxy.js`.
+
+**Automatic Setup:**
+1. Deploy to Vercel (it will auto-detect the `/api` folder)
+2. The app automatically tries the serverless function first
+3. Falls back to public proxies if function unavailable
+
+**Manual Test:**
+```bash
+# After deploying to Vercel, test the endpoint:
+curl "https://your-app.vercel.app/api/binance-proxy?endpoint=/fapi/v1/premiumIndex?symbol=BTCUSDT"
+```
+
+**Benefits:**
+- ✅ Fast (same region as your app)
+- ✅ Reliable (100% uptime)
+- ✅ No rate limits (your Vercel account limits)
+- ✅ No external dependencies
+- ✅ Free tier: 100GB bandwidth, 100k requests/month
+
+**Files Included:**
+- `/api/binance-proxy.js` - Serverless function
+- `/vercel.json` - Vercel configuration with CORS headers
+
+**Option 2: Netlify Functions**
+Similar to Vercel, rename `/api` to `/netlify/functions`:
+```bash
+mv api netlify/functions
+```
+
+**Option 3: Cloudflare Workers**
 ```javascript
 // Example Cloudflare Worker
 export default {
   async fetch(request) {
     const url = new URL(request.url);
-    const binanceUrl = url.searchParams.get('url');
+    const endpoint = url.searchParams.get('endpoint');
+    const binanceUrl = `https://fapi.binance.com${endpoint}`;
     const response = await fetch(binanceUrl);
-    return new Response(await response.text(), {
+    const data = await response.json();
+    return new Response(JSON.stringify(data), {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Content-Type': 'application/json'
@@ -410,48 +444,89 @@ export default {
 }
 ```
 
-**Option 2: Backend Proxy**
-Set `useCorsProxy = false` and add a backend endpoint:
-```
-GET /api/binance-proxy?endpoint=/fapi/v1/premiumIndex?symbol=BTCUSDT
-```
-
-**Option 3: Disable Fetch (Manual Only)**
+**Option 4: Disable Fetch (Manual Only)**
 Simply don't use the fetch button. Manual input fields work independently.
 
 ### Configuration
 
-To change CORS proxy in `app.js` (line 972):
-```javascript
-// Use different proxy
-const corsProxy = 'https://corsproxy.io/?';
+The app uses a **smart multi-proxy fallback system** (app.js lines 967-1040):
 
-// Or disable proxy (requires backend)
-const useCorsProxy = false;
+**Fetch Strategy (Automatic):**
+1. ✅ Try local serverless function (`/api/binance-proxy`)
+2. ⚠️ Fallback to `corsproxy.io` if (1) fails
+3. ⚠️ Fallback to `allorigins.win` if (2) fails
+4. ⚠️ Fallback to `codetabs.com` if (3) fails
+5. ❌ Show error if all fail
+
+**To customize proxy order:**
+```javascript
+// In app.js line 999, edit the corsProxies array:
+const corsProxies = [
+    'https://corsproxy.io/?',                    // Your preferred proxy
+    'https://your-custom-proxy.com/?url=',       // Add custom proxies
+    'https://api.allorigins.win/raw?url='
+];
+```
+
+**To disable fallback proxies (serverless only):**
+```javascript
+// In app.js line 999, set empty array:
+const corsProxies = [];
+// This will only use serverless function, no fallback
 ```
 
 ### Rate Limits
+
+**Vercel Serverless Function (Recommended):**
+- Free tier: 100GB bandwidth, 100k serverless invocations/month
+- No shared rate limits
+- Binance API limit: 1200 requests/minute per IP
+
+**Fallback Public Proxies:**
+- **corsproxy.io**: ~60 requests/minute (shared)
 - **AllOrigins**: ~10 requests/second (shared)
-- **Binance Direct**: 1200 requests/minute per IP (if CORS enabled)
-- **Manual fetch**: Click-triggered only, no auto-polling
+- **CodeTabs**: ~10 requests/minute (shared)
+
+**App Usage:**
+- Manual fetch only (click-triggered)
+- No auto-polling or background refresh
+- Typical usage: 1-3 fetches per trading day
 
 ### Troubleshooting
 
-**Error: "Data unavailable"**
-1. Check browser console for specific error
-2. Verify internet connection
-3. Try alternative CORS proxy
-4. Use manual input as fallback
+**Error: "Data unavailable" / "All proxies failed"**
 
-**Error: "Network request failed"**
-- CORS proxy might be down
-- Switch to alternative proxy
-- Check if symbol is valid
+The app tries multiple proxies automatically. Check browser console to see which failed:
 
-**Slow Response**
-- CORS proxy adds latency (~1-3 seconds)
-- Normal for free proxies
-- Consider serverless function for production
+1. **Open DevTools** (F12) → Console tab
+2. **Look for logs:**
+   ```
+   🔄 Trying local serverless function...
+   ❌ Serverless function not available
+   🔄 Trying CORS proxy 1/3: https://corsproxy.io...
+   ❌ CORS proxy 1 failed: [error]
+   ```
+
+3. **Solutions:**
+   - **If deployed on Vercel:** Verify `/api/binance-proxy.js` exists and redeploy
+   - **If all proxies fail:** Check internet connection, try again in 1 minute (rate limits)
+   - **Always works:** Use manual input fields (no fetch required)
+
+**Slow Response (5+ seconds)**
+- **Using public proxies:** Normal latency is 1-3 seconds
+- **Using serverless:** Should be <1 second
+- **Check console:** See which proxy succeeded
+- **Solution:** Deploy serverless function for faster response
+
+**Specific Symbol Fails**
+- **Check symbol spelling:** Must be exact (e.g., `BTCUSDT` not `BTC-USDT`)
+- **Verify on Binance:** Symbol must exist on Binance Futures
+- **Try BTCUSDT:** Most reliable test symbol
+
+**CORS Errors in Console**
+- **Expected if using public proxies:** Some will fail, app tries next one
+- **Not expected if using serverless:** Check Vercel deployment logs
+- **Verify:** `vercel.json` is included in repository
 
 ---
 

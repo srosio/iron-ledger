@@ -953,36 +953,90 @@ const IronLedger = {
     },
 
     /**
-     * Generic Binance API fetch wrapper
+     * Generic Binance API fetch wrapper with multi-proxy fallback
      * Uses public API endpoints only
      *
      * CORS NOTE: Binance does not enable CORS for browser requests.
-     * Options to fix this:
-     * 1. Use CORS proxy (enabled by default for client-side apps)
-     * 2. Host with a backend proxy (recommended for production)
-     * 3. Use serverless functions (Cloudflare Workers, Netlify Functions)
+     * This implementation:
+     * 1. First tries local Vercel/Netlify serverless function (if available)
+     * 2. Falls back to public CORS proxies if serverless function doesn't exist
+     * 3. Tries multiple proxies in order until one succeeds
      *
-     * To disable CORS proxy and use direct fetch (only works if hosted with backend):
-     * Set useCorsProxy to false in config below
+     * For production: Deploy with /api/binance-proxy.js serverless function
      */
     async fetchBinance(endpoint) {
-        // CORS proxy configuration
-        // Using allOrigins.win - a free, open CORS proxy
-        // Alternative: 'https://corsproxy.io/?'
-        const useCorsProxy = true; // Set to false if you have a backend proxy
-        const corsProxy = 'https://api.allorigins.win/raw?url=';
-
         const baseUrl = 'https://fapi.binance.com';
         const fullUrl = baseUrl + endpoint;
-        const fetchUrl = useCorsProxy ? corsProxy + encodeURIComponent(fullUrl) : fullUrl;
 
-        const response = await fetch(fetchUrl);
+        // Strategy 1: Try local serverless function first (Vercel/Netlify)
+        // This is the BEST option - fast, reliable, no external dependencies
+        try {
+            console.log('🔄 Trying local serverless function...');
+            const serverlessUrl = `/api/binance-proxy?endpoint=${encodeURIComponent(endpoint)}`;
 
-        if (!response.ok) {
-            throw new Error(`Binance API error: ${response.status} ${response.statusText}`);
+            const response = await fetch(serverlessUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ Serverless function succeeded');
+                return data;
+            } else {
+                console.warn('⚠️ Serverless function returned:', response.status);
+                throw new Error(`Serverless returned ${response.status}`);
+            }
+        } catch (error) {
+            console.warn('❌ Serverless function not available:', error.message);
+            console.log('⚠️ Falling back to public CORS proxies...');
         }
 
-        return await response.json();
+        // Strategy 2: Fallback to public CORS proxies
+        // List of CORS proxies to try in order
+        const corsProxies = [
+            'https://corsproxy.io/?',                           // Primary - reliable, fast
+            'https://api.allorigins.win/raw?url=',              // Backup - sometimes slow
+            'https://api.codetabs.com/v1/proxy?quest='          // Tertiary - rate limited
+        ];
+
+        // Try each proxy in sequence
+        for (let i = 0; i < corsProxies.length; i++) {
+            const proxy = corsProxies[i];
+            const fetchUrl = proxy + encodeURIComponent(fullUrl);
+
+            try {
+                console.log(`🔄 Trying CORS proxy ${i + 1}/${corsProxies.length}: ${proxy.substring(0, 30)}...`);
+
+                const response = await fetch(fetchUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log(`✅ CORS proxy ${i + 1} succeeded`);
+                return data;
+
+            } catch (error) {
+                console.warn(`❌ CORS proxy ${i + 1} failed:`, error.message);
+
+                // If this was the last proxy, throw the error
+                if (i === corsProxies.length - 1) {
+                    throw new Error(`All proxies failed. Last error: ${error.message}`);
+                }
+
+                // Otherwise, continue to next proxy
+                continue;
+            }
+        }
     },
 
     /**
