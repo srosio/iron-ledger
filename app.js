@@ -27,7 +27,10 @@ const IronLedger = {
         },
         currentScreen: 'setup',
         riskCalculated: false,
-        activeTradeId: null
+        activeTradeId: null,
+        // Market context snapshot (fetched from Binance)
+        // This data is INFORMATIONAL ONLY and does NOT affect trade enforcement
+        marketContext: null
     },
 
     /**
@@ -54,6 +57,7 @@ const IronLedger = {
                 this.state.sessions = parsed.sessions || {};
                 this.state.trades = parsed.trades || [];
                 this.state.limits = parsed.limits || this.state.limits;
+                this.state.marketContext = parsed.marketContext || null;
                 console.log('📂 State loaded from LocalStorage');
             } catch (e) {
                 console.error('❌ Failed to load state:', e);
@@ -69,7 +73,8 @@ const IronLedger = {
         const toSave = {
             sessions: this.state.sessions,
             trades: this.state.trades,
-            limits: this.state.limits
+            limits: this.state.limits,
+            marketContext: this.state.marketContext
         };
         localStorage.setItem('ironledger_state', JSON.stringify(toSave));
         console.log('💾 State saved');
@@ -660,7 +665,11 @@ const IronLedger = {
             quality: document.getElementById('execQuality').value,
 
             status: 'confirmed',
-            completed: false
+            completed: false,
+
+            // Market Context Snapshot (INFORMATIONAL ONLY - attached for review purposes)
+            // This data does NOT influence trade approval or enforcement
+            marketContext: this.state.marketContext ? { ...this.state.marketContext } : null
         };
 
         // Save trade
@@ -873,6 +882,136 @@ const IronLedger = {
                     <td class="p-2">${t.quality}</td>
                 </tr>
             `).join('');
+        }
+    },
+
+    /**
+     * ============================================
+     * MARKET CONTEXT FETCH (BINANCE FUTURES API)
+     * ============================================
+     *
+     * IMPORTANT: This data is INFORMATIONAL ONLY
+     * It does NOT affect trade enforcement, bias, risk, or limits
+     * If fetch fails, trading continues normally with manual input
+     */
+
+    /**
+     * Fetch market data from Binance Futures API
+     * Called manually via button click - no automatic polling
+     */
+    async fetchMarketData() {
+        const symbol = document.getElementById('marketSymbol').value;
+
+        // Validate symbol selection
+        if (!symbol) {
+            this.showMarketDataStatus('Please select a symbol first', 'error');
+            return;
+        }
+
+        this.showMarketDataStatus('Loading...', 'loading');
+
+        try {
+            // Fetch from Binance Futures API (public endpoints, no auth required)
+            const [premiumData, openInterestData, statsData] = await Promise.all([
+                this.fetchBinance(`/fapi/v1/premiumIndex?symbol=${symbol}`),
+                this.fetchBinance(`/fapi/v1/openInterest?symbol=${symbol}`),
+                this.fetchBinance(`/fapi/v1/ticker/24hr?symbol=${symbol}`)
+            ]);
+
+            // Extract relevant data
+            const marketContext = {
+                symbol: symbol,
+                markPrice: parseFloat(premiumData.markPrice),
+                lastFundingRate: parseFloat(premiumData.lastFundingRate) * 100, // Convert to percentage
+                openInterest: parseFloat(openInterestData.openInterest),
+                volume: parseFloat(statsData.volume),
+                priceChangePercent: parseFloat(statsData.priceChangePercent),
+                fetchedAt: Date.now()
+            };
+
+            // Store in state (INFORMATIONAL ONLY - does not affect enforcement)
+            this.state.marketContext = marketContext;
+            this.saveState();
+
+            // Display the data
+            this.displayMarketData(marketContext);
+            this.showMarketDataStatus(
+                `Data fetched successfully at ${new Date().toLocaleTimeString()}`,
+                'success'
+            );
+
+            console.log('📊 Market data fetched (informational only):', marketContext);
+
+        } catch (error) {
+            console.error('❌ Market data fetch failed:', error);
+            this.showMarketDataStatus(
+                'Data unavailable - Please use manual input',
+                'error'
+            );
+            // Trading continues normally - fetch failure does NOT block anything
+        }
+    },
+
+    /**
+     * Generic Binance API fetch wrapper
+     * Uses public API endpoints only
+     */
+    async fetchBinance(endpoint) {
+        const baseUrl = 'https://fapi.binance.com';
+        const response = await fetch(baseUrl + endpoint);
+
+        if (!response.ok) {
+            throw new Error(`Binance API error: ${response.status} ${response.statusText}`);
+        }
+
+        return await response.json();
+    },
+
+    /**
+     * Display fetched market data in the UI
+     */
+    displayMarketData(data) {
+        const display = document.getElementById('marketDataDisplay');
+        display.classList.remove('hidden');
+
+        // Format and display values
+        document.getElementById('marketMarkPrice').textContent =
+            '$' + data.markPrice.toFixed(2);
+
+        document.getElementById('marketFundingRate').textContent =
+            data.lastFundingRate.toFixed(4) + '%';
+
+        document.getElementById('marketOpenInterest').textContent =
+            data.openInterest.toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+        document.getElementById('marketVolume').textContent =
+            data.volume.toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+        const priceChangeEl = document.getElementById('marketPriceChange');
+        priceChangeEl.textContent =
+            (data.priceChangePercent >= 0 ? '+' : '') + data.priceChangePercent.toFixed(2) + '%';
+        priceChangeEl.className = 'font-mono font-semibold ' +
+            (data.priceChangePercent >= 0 ? 'text-green-400' : 'text-red-400');
+
+        document.getElementById('marketTimestamp').textContent =
+            new Date(data.fetchedAt).toLocaleString();
+    },
+
+    /**
+     * Show status message for market data fetch
+     */
+    showMarketDataStatus(message, type) {
+        const statusEl = document.getElementById('marketDataStatus');
+        statusEl.classList.remove('hidden');
+        statusEl.textContent = message;
+
+        // Color coding based on type
+        if (type === 'loading') {
+            statusEl.className = 'mb-3 text-xs text-blue-400';
+        } else if (type === 'success') {
+            statusEl.className = 'mb-3 text-xs text-green-400';
+        } else if (type === 'error') {
+            statusEl.className = 'mb-3 text-xs text-yellow-400';
         }
     }
 };
