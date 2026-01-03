@@ -902,13 +902,14 @@ const IronLedger = {
     async fetchMarketData() {
         const symbol = document.getElementById('marketSymbol').value;
 
-        // Validate symbol selection
+        // If no symbol selected, just hide the display and return
         if (!symbol) {
-            this.showMarketDataStatus('Please select a symbol first', 'error');
+            document.getElementById('marketDataDisplay').classList.add('hidden');
+            document.getElementById('marketDataStatus').classList.add('hidden');
             return;
         }
 
-        this.showMarketDataStatus('Loading...', 'loading');
+        this.showMarketDataStatus('Fetching...', 'loading');
 
         try {
             // Fetch from Binance Futures API (public endpoints, no auth required)
@@ -939,10 +940,11 @@ const IronLedger = {
             this.state.marketContext = marketContext;
             this.saveState();
 
-            // Display the data
+            // Display the data and auto-fill manual fields
             this.displayMarketData(marketContext);
+            this.autoFillMarketContext(marketContext);
             this.showMarketDataStatus(
-                `Data fetched successfully at ${new Date().toLocaleTimeString()}`,
+                `✓ Data fetched at ${new Date().toLocaleTimeString()}`,
                 'success'
             );
 
@@ -1089,7 +1091,33 @@ const IronLedger = {
             (data.priceChangePercent >= 0 ? 'text-green-400' : 'text-red-400');
 
         document.getElementById('marketTimestamp').textContent =
-            new Date(data.fetchedAt).toLocaleString();
+            new Date(data.fetchedAt).toLocaleTimeString();
+    },
+
+    /**
+     * Auto-fill manual context fields with fetched data
+     */
+    autoFillMarketContext(data) {
+        // Auto-fill Funding Rate
+        document.getElementById('contextFunding').value = data.lastFundingRate.toFixed(4);
+
+        // Auto-select Open Interest trend (simple heuristic - could be enhanced)
+        // Note: We don't have historical OI data, so this is a placeholder
+        // User can manually adjust after
+        const oiSelect = document.getElementById('contextOI');
+        // Default to empty - user should assess this manually from their charts
+        oiSelect.value = '';
+
+        // Auto-select Volume trend based on a simple heuristic
+        // If 24h change is significant, volume is likely above average
+        const volumeSelect = document.getElementById('contextVolume');
+        if (Math.abs(data.priceChangePercent) > 3) {
+            volumeSelect.value = 'above';
+        } else {
+            volumeSelect.value = '';
+        }
+
+        console.log('✓ Auto-filled funding rate:', data.lastFundingRate.toFixed(4) + '%');
     },
 
     /**
