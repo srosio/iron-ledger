@@ -23,7 +23,8 @@ const IronLedger = {
             minTimeBetweenTrades: 2 * 60 * 60 * 1000, // 2 hours in ms
             maxLeverage: 10,
             defaultRiskPercent: 1,
-            maxStopDistance: 2.0 // 2%
+            maxStopDistance: 2.0, // 2%
+            initialBalance: 10000 // Default initial balance - configurable by user
         },
         currentScreen: 'setup',
         riskCalculated: false,
