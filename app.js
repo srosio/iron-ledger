@@ -918,6 +918,12 @@ const IronLedger = {
                 this.fetchBinance(`/fapi/v1/ticker/24hr?symbol=${symbol}`)
             ]);
 
+            // Debug: Log raw responses to diagnose parsing issues
+            console.log('📋 Raw API Responses:');
+            console.log('premiumData:', premiumData);
+            console.log('openInterestData:', openInterestData);
+            console.log('statsData:', statsData);
+
             // Extract relevant data
             const marketContext = {
                 symbol: symbol,
@@ -984,6 +990,7 @@ const IronLedger = {
             if (response.ok) {
                 const data = await response.json();
                 console.log('✅ Serverless function succeeded');
+                console.log('📦 Serverless data structure:', data);
                 return data;
             } else {
                 console.warn('⚠️ Serverless function returned:', response.status);
@@ -1021,8 +1028,24 @@ const IronLedger = {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
-                const data = await response.json();
+                let data = await response.json();
                 console.log(`✅ CORS proxy ${i + 1} succeeded`);
+
+                // Some CORS proxies wrap the response - unwrap if needed
+                // allOrigins non-raw endpoint returns: { contents: "..." }
+                // We use raw endpoint, but check anyway
+                if (data && typeof data === 'object' && data.contents) {
+                    console.log('🔄 Unwrapping proxy response...');
+                    try {
+                        data = typeof data.contents === 'string'
+                            ? JSON.parse(data.contents)
+                            : data.contents;
+                    } catch (e) {
+                        console.warn('Failed to unwrap, using as-is');
+                    }
+                }
+
+                console.log('📦 Final data structure:', data);
                 return data;
 
             } catch (error) {
