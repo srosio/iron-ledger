@@ -35,7 +35,10 @@ const IronLedger = {
         // OI history for tracking actual OI changes (per symbol)
         oiHistory: {},
         // Saved symbols for quick access in dropdown
-        savedSymbols: []
+        savedSymbols: [],
+        // Hot coins cache (refreshed every 30 minutes)
+        hotCoins: [],
+        hotCoinsTimestamp: null
     },
 
     /**
@@ -49,6 +52,7 @@ const IronLedger = {
         this.startTimers();
         this.showScreen('trading');
         this.updateStatusBar();
+        this.fetchHotCoins(); // Auto-load hot coins on startup
         console.log('✅ IronLedger ready');
     },
 
@@ -67,6 +71,8 @@ const IronLedger = {
                 this.state.selectedSession = parsed.selectedSession || null;
                 this.state.oiHistory = parsed.oiHistory || {};
                 this.state.savedSymbols = parsed.savedSymbols || [];
+                this.state.hotCoins = parsed.hotCoins || [];
+                this.state.hotCoinsTimestamp = parsed.hotCoinsTimestamp || null;
                 console.log('📂 State loaded from LocalStorage');
             } catch (e) {
                 console.error('❌ Failed to load state:', e);
@@ -86,7 +92,9 @@ const IronLedger = {
             marketContext: this.state.marketContext,
             selectedSession: this.state.selectedSession,
             oiHistory: this.state.oiHistory,
-            savedSymbols: this.state.savedSymbols
+            savedSymbols: this.state.savedSymbols,
+            hotCoins: this.state.hotCoins,
+            hotCoinsTimestamp: this.state.hotCoinsTimestamp
         };
         localStorage.setItem('ironledger_state', JSON.stringify(toSave));
         console.log('💾 State saved');
@@ -141,6 +149,103 @@ const IronLedger = {
             this.populateSavedSymbols();
             console.log('💾 Symbol saved:', symbol);
         }
+    },
+
+    /**
+     * Fetch hot coins from Binance (top volume pairs)
+     * Caches results for 30 minutes to avoid excessive API calls
+     */
+    async fetchHotCoins() {
+        const display = document.getElementById('hotCoinsDisplay');
+
+        // Check cache - refresh if older than 30 minutes
+        const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+        const now = Date.now();
+
+        if (this.state.hotCoins.length > 0 &&
+            this.state.hotCoinsTimestamp &&
+            (now - this.state.hotCoinsTimestamp) < CACHE_DURATION) {
+            // Use cached data
+            console.log('🔥 Using cached hot coins');
+            this.displayHotCoins(this.state.hotCoins);
+            return;
+        }
+
+        // Fetch fresh data
+        display.innerHTML = '<p class="text-xs text-gray-500">Loading hot coins...</p>';
+
+        try {
+            // Fetch all 24hr ticker data
+            const tickers = await this.fetchBinance('/fapi/v1/ticker/24hr');
+
+            // Filter for USDT perpetual pairs only (exclude BUSD, coins, etc.)
+            // Sort by quote volume (volume in USDT) descending
+            const usdtPairs = tickers
+                .filter(t => t.symbol.endsWith('USDT') && !t.symbol.includes('_'))
+                .map(t => ({
+                    symbol: t.symbol,
+                    volume: parseFloat(t.quoteVolume),
+                    priceChange: parseFloat(t.priceChangePercent)
+                }))
+                .sort((a, b) => b.volume - a.volume)
+                .slice(0, 15); // Top 15 coins
+
+            // Cache the results
+            this.state.hotCoins = usdtPairs;
+            this.state.hotCoinsTimestamp = now;
+            this.saveState();
+
+            // Display
+            this.displayHotCoins(usdtPairs);
+
+            console.log('🔥 Hot coins fetched:', usdtPairs.length);
+
+        } catch (error) {
+            console.error('❌ Hot coins fetch failed:', error);
+            display.innerHTML = '<p class="text-xs text-red-400">Failed to load hot coins</p>';
+        }
+    },
+
+    /**
+     * Display hot coins as clickable buttons
+     */
+    displayHotCoins(coins) {
+        const display = document.getElementById('hotCoinsDisplay');
+
+        if (!coins || coins.length === 0) {
+            display.innerHTML = '<p class="text-xs text-gray-500">No hot coins available</p>';
+            return;
+        }
+
+        // Create button for each hot coin
+        display.innerHTML = coins.map(coin => {
+            const changeClass = coin.priceChange >= 0 ? 'text-green-400' : 'text-red-400';
+            const changeIcon = coin.priceChange >= 0 ? '📈' : '📉';
+
+            return `
+                <button type="button"
+                        onclick="IronLedger.selectHotCoin('${coin.symbol}')"
+                        class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded transition text-left">
+                    <div class="text-sm font-bold text-white">${coin.symbol.replace('USDT', '')}</div>
+                    <div class="text-xs ${changeClass}">
+                        ${coin.priceChange >= 0 ? '+' : ''}${coin.priceChange.toFixed(2)}% ${changeIcon}
+                    </div>
+                </button>
+            `;
+        }).join('');
+    },
+
+    /**
+     * Select a hot coin and auto-fetch its data
+     */
+    selectHotCoin(symbol) {
+        // Set the symbol in input field
+        document.getElementById('marketSymbol').value = symbol;
+
+        // Auto-fetch market data
+        this.fetchMarketData();
+
+        console.log('🔥 Hot coin selected:', symbol);
     },
 
     /**
