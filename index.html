@@ -47,20 +47,10 @@
 
         <!-- Navigation Tabs -->
         <nav class="mb-6 flex gap-2 flex-wrap">
-            <button onclick="IronLedger.showScreen('setup')"
+            <button onclick="IronLedger.showScreen('trading')"
                     class="tab-btn px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 transition"
-                    data-screen="setup">
-                📋 Pre-Market Setup
-            </button>
-            <button onclick="IronLedger.showScreen('status')"
-                    class="tab-btn px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 transition"
-                    data-screen="status">
-                ⚡ Trade Status
-            </button>
-            <button onclick="IronLedger.showScreen('confirm')"
-                    class="tab-btn px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 transition"
-                    data-screen="confirm">
-                ✅ Trade Confirmation
+                    data-screen="trading">
+                📈 Trading
             </button>
             <button onclick="IronLedger.showScreen('log')"
                     class="tab-btn px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 transition"
@@ -75,119 +65,42 @@
         </nav>
 
         <!-- ========================================
-             SCREEN 1: PRE-MARKET SETUP
+             UNIFIED TRADING SCREEN
              ======================================== -->
-        <section id="screen-setup" class="screen-section">
-            <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
-                <h2 class="text-2xl font-bold mb-4 text-blue-400">Market Context</h2>
-                <p class="text-sm text-gray-400 mb-6">Select symbol to auto-fetch live market data, or enter manually.</p>
-
-                <form id="setupForm" class="space-y-6">
-                    <!-- Market Context -->
-                    <div class="bg-gray-700 p-4 rounded">
-                        <h3 class="font-semibold mb-3 text-blue-300">Market Context</h3>
-                        <p class="text-xs text-gray-400 mb-4">Select symbol to auto-fetch live data, or enter manually</p>
-
-                        <!-- Symbol Selector -->
-                        <div class="mb-4">
-                            <label class="block text-xs mb-1 font-semibold">Symbol (optional - auto-fetches data)</label>
-                            <select id="marketSymbol" onchange="IronLedger.fetchMarketData()"
-                                    class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                                <option value="">Manual Entry Only</option>
-                                <option value="BTCUSDT">BTCUSDT</option>
-                                <option value="ETHUSDT">ETHUSDT</option>
-                                <option value="BNBUSDT">BNBUSDT</option>
-                                <option value="SOLUSDT">SOLUSDT</option>
-                                <option value="XRPUSDT">XRPUSDT</option>
-                                <option value="ADAUSDT">ADAUSDT</option>
-                                <option value="DOGEUSDT">DOGEUSDT</option>
-                                <option value="MATICUSDT">MATICUSDT</option>
-                                <option value="DOTUSDT">DOTUSDT</option>
-                                <option value="AVAXUSDT">AVAXUSDT</option>
-                                <option value="LINKUSDT">LINKUSDT</option>
-                                <option value="UNIUSDT">UNIUSDT</option>
-                            </select>
-                        </div>
-
-                        <!-- Fetch Status -->
-                        <div id="marketDataStatus" class="mb-3 text-xs hidden"></div>
-
-                        <!-- Market Context Fields (Auto-filled or Manual) -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-xs mb-1">Funding Rate (%)</label>
-                                <input type="number" id="contextFunding" step="0.01" placeholder="e.g., 0.01"
-                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">Open Interest</label>
-                                <select id="contextOI"
-                                        class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                                    <option value="">Select</option>
-                                    <option value="rising">Rising</option>
-                                    <option value="falling">Falling</option>
-                                    <option value="flat">Flat</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">24h Volume</label>
-                                <select id="contextVolume"
-                                        class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                                    <option value="">Select</option>
-                                    <option value="above">Above Average</option>
-                                    <option value="below">Below Average</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Live Data Display (when fetched) -->
-                        <div id="marketDataDisplay" class="hidden mt-4 p-3 bg-gray-800 rounded border border-gray-600">
-                            <p class="text-xs text-gray-400 mb-2">📊 Live Data (auto-fetched)</p>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                                <div>
-                                    <p class="text-gray-500">Mark Price</p>
-                                    <p id="marketMarkPrice" class="font-mono font-semibold text-blue-300">--</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-500">Funding</p>
-                                    <p id="marketFundingRate" class="font-mono font-semibold text-blue-300">--</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-500">Open Interest</p>
-                                    <p id="marketOpenInterest" class="font-mono font-semibold text-blue-300">--</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-500">24h Volume</p>
-                                    <p id="marketVolume" class="font-mono font-semibold text-blue-300">--</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-500">24h Change</p>
-                                    <p id="marketPriceChange" class="font-mono font-semibold">--</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-500">Updated</p>
-                                    <p id="marketTimestamp" class="font-mono text-gray-400">--</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button type="submit"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition">
-                        💾 SAVE MARKET CONTEXT
-                    </button>
-                </form>
-            </div>
-        </section>
-
-        <!-- ========================================
-             SCREEN 2: TRADE ELIGIBILITY STATUS
-             ======================================== -->
-        <section id="screen-status" class="screen-section hidden">
+        <section id="screen-trading" class="screen-section">
             <div class="space-y-6">
-                <!-- Status Header -->
-                <div id="statusHeader" class="bg-gray-800 rounded-lg p-6 shadow-xl">
-                    <h2 class="text-2xl font-bold mb-4 text-blue-400">Trade Eligibility Status</h2>
+
+                <!-- Session Selector -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4 text-blue-400">📈 Trading Session</h2>
+                    <div class="grid grid-cols-3 gap-4">
+                        <button onclick="IronLedger.selectSession('asian')"
+                                class="session-btn p-4 rounded bg-gray-700 hover:bg-gray-600 transition text-center"
+                                data-session="asian">
+                            <p class="text-lg font-bold">🌏 Asian</p>
+                            <p class="text-xs text-gray-400">00:00-08:00 UTC</p>
+                        </button>
+                        <button onclick="IronLedger.selectSession('london')"
+                                class="session-btn p-4 rounded bg-gray-700 hover:bg-gray-600 transition text-center"
+                                data-session="london">
+                            <p class="text-lg font-bold">🇬🇧 London</p>
+                            <p class="text-xs text-gray-400">08:00-16:00 UTC</p>
+                        </button>
+                        <button onclick="IronLedger.selectSession('newyork')"
+                                class="session-btn p-4 rounded bg-gray-700 hover:bg-gray-600 transition text-center"
+                                data-session="newyork">
+                            <p class="text-lg font-bold">🇺🇸 New York</p>
+                            <p class="text-xs text-gray-400">13:00-21:00 UTC</p>
+                        </button>
+                    </div>
+                    <div id="selectedSession" class="mt-4 p-3 bg-blue-900 border border-blue-700 rounded hidden">
+                        <p class="text-sm font-semibold text-blue-300">Selected: <span id="selectedSessionName"></span></p>
+                    </div>
+                </div>
+
+                <!-- Trade Status (Compact) -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h3 class="text-lg font-bold mb-4 text-blue-400">Trade Status</h3>
 
                     <!-- Lock/Suspension Alert -->
                     <div id="lockAlert" class="hidden mb-4 p-4 bg-red-900 border border-red-700 rounded pulse-red">
@@ -195,109 +108,158 @@
                         <p id="lockReason" class="text-sm text-gray-300 mt-2"></p>
                     </div>
 
-                    <!-- Status Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div class="bg-gray-700 p-4 rounded">
-                            <p class="text-xs text-gray-400 mb-1">Current UTC Time</p>
-                            <p id="statusTime" class="text-xl font-mono font-bold"></p>
-                        </div>
-                        <div class="bg-gray-700 p-4 rounded">
-                            <p class="text-xs text-gray-400 mb-1">Session Status</p>
-                            <p id="statusSessionStatus" class="text-xl font-bold"></p>
-                        </div>
-                        <div class="bg-gray-700 p-4 rounded">
-                            <p class="text-xs text-gray-400 mb-1">Active Bias</p>
-                            <p id="statusBias" class="text-xl font-bold"></p>
-                        </div>
-                        <div class="bg-gray-700 p-4 rounded">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-gray-700 p-3 rounded">
                             <p class="text-xs text-gray-400 mb-1">Trades Today</p>
-                            <p id="statusTradesToday" class="text-xl font-bold"></p>
+                            <p id="statusTradesToday" class="text-lg font-bold"></p>
                         </div>
-                        <div class="bg-gray-700 p-4 rounded">
+                        <div class="bg-gray-700 p-3 rounded">
                             <p class="text-xs text-gray-400 mb-1">Trades This Week</p>
-                            <p id="statusTradesWeek" class="text-xl font-bold"></p>
+                            <p id="statusTradesWeek" class="text-lg font-bold"></p>
                         </div>
+                        <div class="bg-gray-700 p-3 rounded">
+                            <p class="text-xs text-gray-400 mb-1">Cooldown</p>
+                            <p id="statusCooldown" class="text-lg font-bold"></p>
+                        </div>
+                        <div class="bg-gray-700 p-3 rounded">
+                            <p class="text-xs text-gray-400 mb-1">Active Trades</p>
+                            <p id="statusActiveTrades" class="text-lg font-bold"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Market Context -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h3 class="text-lg font-bold mb-4 text-blue-400">Market Context</h3>
+
+                    <!-- Symbol Selector -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold mb-2">Symbol (optional - auto-fetches data)</label>
+                        <select id="marketSymbol" onchange="IronLedger.fetchMarketData()"
+                                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2">
+                            <option value="">Manual Entry Only</option>
+                            <option value="BTCUSDT">BTCUSDT</option>
+                            <option value="ETHUSDT">ETHUSDT</option>
+                            <option value="BNBUSDT">BNBUSDT</option>
+                            <option value="SOLUSDT">SOLUSDT</option>
+                            <option value="XRPUSDT">XRPUSDT</option>
+                            <option value="ADAUSDT">ADAUSDT</option>
+                            <option value="DOGEUSDT">DOGEUSDT</option>
+                            <option value="MATICUSDT">MATICUSDT</option>
+                            <option value="DOTUSDT">DOTUSDT</option>
+                            <option value="AVAXUSDT">AVAXUSDT</option>
+                            <option value="LINKUSDT">LINKUSDT</option>
+                            <option value="UNIUSDT">UNIUSDT</option>
+                        </select>
+                    </div>
+
+                    <!-- Fetch Status -->
+                    <div id="marketDataStatus" class="mb-3 text-sm hidden"></div>
+
+                    <!-- Market Context Fields -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm mb-1">Funding Rate (%)</label>
+                            <input type="number" id="contextFunding" step="0.01" placeholder="e.g., 0.01"
+                                   class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1">Open Interest</label>
+                            <select id="contextOI" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2">
+                                <option value="">Select</option>
+                                <option value="rising">Rising</option>
+                                <option value="falling">Falling</option>
+                                <option value="flat">Flat</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1">24h Volume</label>
+                            <select id="contextVolume" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2">
+                                <option value="">Select</option>
+                                <option value="above">Above Average</option>
+                                <option value="below">Below Average</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Live Data Display -->
+                    <div id="marketDataDisplay" class="hidden p-3 bg-gray-700 rounded border border-gray-600">
+                        <p class="text-xs text-gray-400 mb-2">📊 Live Data</p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                            <div>
+                                <p class="text-gray-500 text-xs">Mark Price</p>
+                                <p id="marketMarkPrice" class="font-mono font-semibold text-blue-300">--</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-xs">Funding</p>
+                                <p id="marketFundingRate" class="font-mono font-semibold text-blue-300">--</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-xs">OI</p>
+                                <p id="marketOpenInterest" class="font-mono font-semibold text-blue-300">--</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-xs">24h Change</p>
+                                <p id="marketPriceChange" class="font-mono font-semibold">--</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trade Confirmation -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h3 class="text-lg font-bold mb-4 text-blue-400">Trade Confirmation</h3>
+
+                    <!-- Pre-Check Warnings -->
+                    <div id="confirmBlocker" class="hidden mb-4 p-4 bg-red-900 border border-red-700 rounded">
+                        <p class="font-bold text-red-300">⛔ Trade Confirmation Blocked</p>
+                        <p id="confirmBlockerReason" class="text-sm text-gray-300 mt-2"></p>
+                    </div>
+
+                    <form id="confirmForm" class="space-y-6">
+                        <!-- Structure Confirmation -->
                         <div class="bg-gray-700 p-4 rounded">
-                            <p class="text-xs text-gray-400 mb-1">Cooldown Status</p>
-                            <p id="statusCooldown" class="text-xl font-bold"></p>
+                            <h4 class="font-bold mb-3 text-yellow-300">Structure Confirmation</h4>
+                            <div class="space-y-2">
+                                <label class="flex items-start gap-2 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                    <input type="checkbox" class="mt-1 structure-check" data-rule="biasAlign" required>
+                                    <span class="text-sm">15M bias aligns with trade direction</span>
+                                </label>
+                                <label class="flex items-start gap-2 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                    <input type="checkbox" class="mt-1 structure-check" data-rule="liquiditySweep" required>
+                                    <span class="text-sm">Liquidity sweep occurred</span>
+                                </label>
+                                <label class="flex items-start gap-2 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                    <input type="checkbox" class="mt-1 structure-check" data-rule="sweepDepth" required>
+                                    <span class="text-sm">Sweep depth between 0.2% and 1%</span>
+                                </label>
+                                <label class="flex items-start gap-2 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                    <input type="checkbox" class="mt-1 structure-check" data-rule="closedInside" required>
+                                    <span class="text-sm">Price closed back inside range</span>
+                                </label>
+                                <label class="flex items-start gap-2 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                    <input type="checkbox" class="mt-1 structure-check" data-rule="volumeSpike" required>
+                                    <span class="text-sm">Volume spike visible</span>
+                                </label>
+                                <label class="flex items-start gap-2 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                    <input type="checkbox" class="mt-1 structure-check" data-rule="bosBreak" required>
+                                    <span class="text-sm">5M break of structure ≥0.3%</span>
+                                </label>
+                                <label class="flex items-start gap-2 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                    <input type="checkbox" class="mt-1 structure-check" data-rule="imbalance" required>
+                                    <span class="text-sm">Imbalance (FVG) created</span>
+                                </label>
+                                <label class="flex items-start gap-2 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                    <input type="checkbox" class="mt-1 structure-check" data-rule="firstPullback" required>
+                                    <span class="text-sm">Entry is first pullback only</span>
+                                </label>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Today's Setup -->
-                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
-                    <h3 class="text-lg font-bold mb-3 text-blue-300">Today's Setup</h3>
-                    <div id="todaySetupDisplay" class="text-sm text-gray-300"></div>
-                </div>
-
-                <!-- Active Trades -->
-                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
-                    <h3 class="text-lg font-bold mb-3 text-blue-300">Active Trades</h3>
-                    <div id="activeTradesDisplay" class="text-sm text-gray-300"></div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ========================================
-             SCREEN 3: TRADE CONFIRMATION CHECKLIST
-             ======================================== -->
-        <section id="screen-confirm" class="screen-section hidden">
-            <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
-                <h2 class="text-2xl font-bold mb-4 text-blue-400">Trade Confirmation Checklist</h2>
-                <p class="text-sm text-gray-400 mb-6">All conditions must be met to confirm a trade.</p>
-
-                <!-- Pre-Check Warnings -->
-                <div id="confirmBlocker" class="hidden mb-6 p-4 bg-red-900 border border-red-700 rounded">
-                    <p class="font-bold text-red-300">⛔ Trade Confirmation Blocked</p>
-                    <p id="confirmBlockerReason" class="text-sm text-gray-300 mt-2"></p>
-                </div>
-
-                <form id="confirmForm" class="space-y-6">
-
-                    <!-- SECTION A: STRUCTURE CONFIRMATION -->
-                    <div class="bg-gray-700 p-4 rounded">
-                        <h3 class="font-bold text-lg mb-4 text-yellow-300">A. Structure Confirmation</h3>
-                        <div class="space-y-3">
-                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
-                                <input type="checkbox" class="mt-1 structure-check" data-rule="biasAlign" required>
-                                <span class="text-sm">15M bias aligns with trade direction</span>
-                            </label>
-                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
-                                <input type="checkbox" class="mt-1 structure-check" data-rule="liquiditySweep" required>
-                                <span class="text-sm">Liquidity sweep occurred</span>
-                            </label>
-                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
-                                <input type="checkbox" class="mt-1 structure-check" data-rule="sweepDepth" required>
-                                <span class="text-sm">Sweep depth between 0.2% and 1%</span>
-                            </label>
-                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
-                                <input type="checkbox" class="mt-1 structure-check" data-rule="closedInside" required>
-                                <span class="text-sm">Price closed back inside range</span>
-                            </label>
-                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
-                                <input type="checkbox" class="mt-1 structure-check" data-rule="volumeSpike" required>
-                                <span class="text-sm">Volume spike visible</span>
-                            </label>
-                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
-                                <input type="checkbox" class="mt-1 structure-check" data-rule="bosBreak" required>
-                                <span class="text-sm">5M break of structure ≥0.3%</span>
-                            </label>
-                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
-                                <input type="checkbox" class="mt-1 structure-check" data-rule="imbalance" required>
-                                <span class="text-sm">Imbalance (FVG) created</span>
-                            </label>
-                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
-                                <input type="checkbox" class="mt-1 structure-check" data-rule="firstPullback" required>
-                                <span class="text-sm">Entry is first pullback only</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- SECTION B: DELTA CONFIRMATION -->
-                    <div class="bg-gray-700 p-4 rounded">
-                        <h3 class="font-bold text-lg mb-4 text-yellow-300">B. Delta Confirmation</h3>
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Delta Confirmation -->
+                        <div class="bg-gray-700 p-4 rounded">
+                            <h4 class="font-bold mb-3 text-yellow-300">Delta Confirmation</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label class="block text-sm mb-1">BOS Candle Delta</label>
                                     <input type="number" id="deltaBosCandleDelta" step="0.01"
@@ -310,32 +272,33 @@
                                     <p class="text-xs text-gray-400 mt-1">Must be &lt;30%</p>
                                 </div>
                             </div>
-                            <div class="space-y-3 mt-4">
-                                <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                            <div class="space-y-2">
+                                <label class="flex items-start gap-2 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
                                     <input type="checkbox" class="mt-1 delta-check" data-rule="deltaDivergence" required>
                                     <span class="text-sm">Delta divergence present</span>
                                 </label>
-                                <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                <label class="flex items-start gap-2 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
                                     <input type="checkbox" class="mt-1 delta-check" data-rule="deltaThreshold" required>
                                     <span class="text-sm">Delta threshold met</span>
                                 </label>
-                                <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                <label class="flex items-start gap-2 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
                                     <input type="checkbox" class="mt-1 delta-check" data-rule="pullbackValid" required>
                                     <span class="text-sm">Pullback delta validated</span>
                                 </label>
-                                <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
+                                <label class="flex items-start gap-2 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
                                     <input type="checkbox" class="mt-1 delta-check" data-rule="noOpposingDelta" required>
                                     <span class="text-sm">No aggressive opposing delta</span>
                                 </label>
                             </div>
                         </div>
-                    </div>
 
-                    <button type="submit" id="confirmTradeBtn"
-                            class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded transition text-lg">
-                        ✅ CONFIRM TRADE
-                    </button>
-                </form>
+                        <button type="submit" id="confirmTradeBtn"
+                                class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded transition text-lg">
+                            ✅ CONFIRM TRADE
+                        </button>
+                    </form>
+                </div>
+
             </div>
         </section>
 

@@ -42,7 +42,7 @@ const IronLedger = {
         this.loadState();
         this.setupEventListeners();
         this.startTimers();
-        this.showScreen('setup');
+        this.showScreen('trading');
         this.updateStatusBar();
         console.log('✅ IronLedger ready');
     },
@@ -59,6 +59,7 @@ const IronLedger = {
                 this.state.trades = parsed.trades || [];
                 this.state.limits = parsed.limits || this.state.limits;
                 this.state.marketContext = parsed.marketContext || null;
+                this.state.selectedSession = parsed.selectedSession || null;
                 console.log('📂 State loaded from LocalStorage');
             } catch (e) {
                 console.error('❌ Failed to load state:', e);
@@ -75,7 +76,8 @@ const IronLedger = {
             sessions: this.state.sessions,
             trades: this.state.trades,
             limits: this.state.limits,
-            marketContext: this.state.marketContext
+            marketContext: this.state.marketContext,
+            selectedSession: this.state.selectedSession
         };
         localStorage.setItem('ironledger_state', JSON.stringify(toSave));
         console.log('💾 State saved');
@@ -106,12 +108,6 @@ const IronLedger = {
      * Setup event listeners
      */
     setupEventListeners() {
-        // Setup form
-        document.getElementById('setupForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.lockSetup();
-        });
-
         // Confirm form
         document.getElementById('confirmForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -129,9 +125,6 @@ const IronLedger = {
             this.state.activeTradeId = e.target.value;
             this.updateLogForm();
         });
-
-        // Auto-set today's date
-        document.getElementById('setupDate').valueAsDate = new Date();
     },
 
     /**
@@ -141,7 +134,10 @@ const IronLedger = {
         // Update time and status every second
         setInterval(() => {
             this.updateStatusBar();
-            this.updateStatusScreen();
+            // Update trading screen if it's the current screen
+            if (this.state.currentScreen === 'trading') {
+                this.updateTradingScreen();
+            }
         }, 1000);
     },
 
@@ -289,9 +285,7 @@ const IronLedger = {
             });
 
             // Screen-specific updates
-            if (screenName === 'setup') this.updateSetupScreen();
-            if (screenName === 'status') this.updateStatusScreen();
-            if (screenName === 'confirm') this.updateConfirmScreen();
+            if (screenName === 'trading') this.updateTradingScreen();
             if (screenName === 'log') this.updateLogScreen();
             if (screenName === 'review') this.updateReviewScreen();
         }
@@ -299,68 +293,38 @@ const IronLedger = {
 
     /**
      * ============================================
-     * SCREEN 1: PRE-MARKET SETUP
+     * UNIFIED TRADING SCREEN
      * ============================================
      */
 
-    updateSetupScreen() {
-        const today = this.getToday();
-        const todayContext = this.state.marketContext && this.state.marketContext[today];
-
-        // Just update the form with saved market context if it exists
-        if (todayContext) {
-            if (todayContext.symbol) {
-                document.getElementById('marketSymbol').value = todayContext.symbol;
-            }
-            if (todayContext.funding) {
-                document.getElementById('contextFunding').value = todayContext.funding;
-            }
-            if (todayContext.openInterest) {
-                document.getElementById('contextOI').value = todayContext.openInterest;
-            }
-            if (todayContext.volume) {
-                document.getElementById('contextVolume').value = todayContext.volume;
-            }
-        }
-    },
-
-    lockSetup() {
-        const today = this.getToday();
-
-        // Save market context (optional)
-        const context = {
-            symbol: document.getElementById('marketSymbol').value || null,
-            funding: parseFloat(document.getElementById('contextFunding').value) || null,
-            openInterest: document.getElementById('contextOI').value || null,
-            volume: document.getElementById('contextVolume').value || null,
-            savedAt: Date.now()
-        };
-
-        // Store market context for today
-        this.state.marketContext = this.state.marketContext || {};
-        this.state.marketContext[today] = context;
-
+    selectSession(session) {
+        this.state.selectedSession = session;
         this.saveState();
 
-        alert(`✅ Market context saved!`);
-        this.updateSetupScreen();
+        // Update UI
+        document.querySelectorAll('.session-btn').forEach(btn => {
+            if (btn.dataset.session === session) {
+                btn.classList.add('bg-blue-600');
+                btn.classList.remove('bg-gray-700');
+            } else {
+                btn.classList.remove('bg-blue-600');
+                btn.classList.add('bg-gray-700');
+            }
+        });
+
+        const sessionNames = {
+            'asian': '🌏 Asian (00:00-08:00 UTC)',
+            'london': '🇬🇧 London (08:00-16:00 UTC)',
+            'newyork': '🇺🇸 New York (13:00-21:00 UTC)'
+        };
+
+        document.getElementById('selectedSession').classList.remove('hidden');
+        document.getElementById('selectedSessionName').textContent = sessionNames[session];
     },
 
-    /**
-     * ============================================
-     * SCREEN 2: TRADE ELIGIBILITY STATUS
-     * ============================================
-     */
-
-    updateStatusScreen() {
-        const now = new Date();
-        const utcTime = now.toISOString().substr(11, 8) + ' UTC';
-        document.getElementById('statusTime').textContent = utcTime;
-
+    updateTradingScreen() {
+        // Update status info
         const canTradeResult = this.canTrade();
-        const today = this.getToday();
-
-        // Lock alert
         const lockAlert = document.getElementById('lockAlert');
         const lockReason = document.getElementById('lockReason');
 
@@ -371,76 +335,28 @@ const IronLedger = {
             lockAlert.classList.add('hidden');
         }
 
-        // Session status - simplified (always show as active during trading hours)
-        const statusEl = document.getElementById('statusSessionStatus');
-        statusEl.textContent = '✅ Active';
-        statusEl.className = 'text-xl font-bold text-green-400';
-
-        // Bias - simplified (no bias tracking)
-        const biasEl = document.getElementById('statusBias');
-        biasEl.textContent = 'N/A';
-        biasEl.className = 'text-xl font-bold text-gray-400';
-
-        // Trades
+        // Update trade counts
         document.getElementById('statusTradesToday').textContent =
             `${this.getTradesCount('today')} / ${this.state.config.maxTradesPerDay}`;
         document.getElementById('statusTradesWeek').textContent =
             `${this.getTradesCount('week')} / ${this.state.config.maxTradesPerWeek}`;
 
-        // Cooldown
+        // Update cooldown
         const cooldownEl = document.getElementById('statusCooldown');
         if (this.state.limits.cooldownUntil && Date.now() < this.state.limits.cooldownUntil) {
             const remaining = Math.ceil((this.state.limits.cooldownUntil - Date.now()) / 60000);
             cooldownEl.textContent = `⏳ ${remaining}m`;
-            cooldownEl.className = 'text-xl font-bold text-yellow-400';
+            cooldownEl.className = 'text-lg font-bold text-yellow-400';
         } else {
             cooldownEl.textContent = '✅ Ready';
-            cooldownEl.className = 'text-xl font-bold text-green-400';
+            cooldownEl.className = 'text-lg font-bold text-green-400';
         }
 
-        // Today's market context
-        const setupDisplay = document.getElementById('todaySetupDisplay');
-        const todayContext = this.state.marketContext && this.state.marketContext[today];
-
-        if (todayContext && todayContext.symbol) {
-            setupDisplay.innerHTML = `
-                <div>
-                    <p><strong>Symbol:</strong> ${todayContext.symbol}</p>
-                    <p class="text-sm text-gray-400">
-                        Funding: ${todayContext.funding || 'N/A'} |
-                        OI: ${todayContext.openInterest || 'N/A'} |
-                        Volume: ${todayContext.volume || 'N/A'}
-                    </p>
-                    <p class="text-xs text-gray-500">Saved at ${new Date(todayContext.savedAt).toLocaleString()}</p>
-                </div>
-            `;
-        } else {
-            setupDisplay.innerHTML = '<p class="text-gray-500">No market context saved for today</p>';
-        }
-
-        // Active trades
-        const activeDisplay = document.getElementById('activeTradesDisplay');
+        // Update active trades count
         const activeTrades = this.state.trades.filter(t => t.status === 'confirmed' && !t.completed);
-        if (activeTrades.length > 0) {
-            activeDisplay.innerHTML = activeTrades.map(t => `
-                <div class="bg-gray-700 p-2 rounded mb-2">
-                    <p><strong>Trade Confirmed</strong></p>
-                    <p class="text-xs text-gray-400">${new Date(t.timestamp).toLocaleString()}</p>
-                </div>
-            `).join('');
-        } else {
-            activeDisplay.innerHTML = '<p class="text-gray-500">No active trades</p>';
-        }
-    },
+        document.getElementById('statusActiveTrades').textContent = activeTrades.length;
 
-    /**
-     * ============================================
-     * SCREEN 3: TRADE CONFIRMATION
-     * ============================================
-     */
-
-    updateConfirmScreen() {
-        const canTradeResult = this.canTrade();
+        // Update blocker in confirm section
         const blocker = document.getElementById('confirmBlocker');
         const blockerReason = document.getElementById('confirmBlockerReason');
         const confirmBtn = document.getElementById('confirmTradeBtn');
@@ -456,90 +372,32 @@ const IronLedger = {
             confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
 
-        // Reset risk calculated flag
-        this.state.riskCalculated = false;
-    },
+        // Restore selected session if exists
+        if (this.state.selectedSession) {
+            document.querySelectorAll('.session-btn').forEach(btn => {
+                if (btn.dataset.session === this.state.selectedSession) {
+                    btn.classList.add('bg-blue-600');
+                    btn.classList.remove('bg-gray-700');
+                }
+            });
 
-    /**
-     * Calculate risk and position size
-     */
-    calculateRisk() {
-        const accountSize = parseFloat(document.getElementById('riskAccountSize').value);
-        const riskPercent = parseFloat(document.getElementById('riskPercent').value);
-        const direction = document.getElementById('riskDirection').value;
-        const entry = parseFloat(document.getElementById('riskEntryPrice').value);
-        const sweepHigh = parseFloat(document.getElementById('riskSweepHigh').value);
-        const sweepLow = parseFloat(document.getElementById('riskSweepLow').value);
+            const sessionNames = {
+                'asian': '🌏 Asian (00:00-08:00 UTC)',
+                'london': '🇬🇧 London (08:00-16:00 UTC)',
+                'newyork': '🇺🇸 New York (13:00-21:00 UTC)'
+            };
 
-        // Validation
-        if (!accountSize || !riskPercent || !direction || !entry || !sweepHigh || !sweepLow) {
-            alert('⚠️ Please fill all risk calculation fields');
-            return;
-        }
-
-        // Calculate stop loss
-        let stopLoss;
-        if (direction === 'long') {
-            stopLoss = sweepLow;
-        } else {
-            stopLoss = sweepHigh;
-        }
-
-        // Calculate stop distance
-        const stopDistance = Math.abs(entry - stopLoss);
-        const stopDistancePercent = (stopDistance / entry) * 100;
-
-        // Calculate dollar risk
-        const dollarRisk = accountSize * (riskPercent / 100);
-
-        // Calculate position size
-        const positionSize = dollarRisk / stopDistance;
-
-        // Calculate required leverage
-        const positionValue = positionSize * entry;
-        const leverage = positionValue / accountSize;
-
-        // Display results
-        const resultsDiv = document.getElementById('riskResults');
-        const warningsDiv = document.getElementById('riskWarnings');
-        resultsDiv.classList.remove('hidden');
-
-        document.getElementById('riskStopLoss').textContent = stopLoss.toFixed(2);
-        document.getElementById('riskStopDistance').textContent = stopDistancePercent.toFixed(2) + '%';
-        document.getElementById('riskDollarRisk').textContent = '$' + dollarRisk.toFixed(2);
-        document.getElementById('riskPositionSize').textContent = positionSize.toFixed(4);
-        document.getElementById('riskLeverage').textContent = leverage.toFixed(2) + 'x';
-
-        // Check for violations
-        const warnings = [];
-        let blocked = false;
-
-        if (stopDistancePercent > this.state.config.maxStopDistance) {
-            warnings.push(`❌ BLOCKED: Stop distance ${stopDistancePercent.toFixed(2)}% exceeds max ${this.state.config.maxStopDistance}%`);
-            blocked = true;
-            resultsDiv.classList.add('border-red-600');
-        }
-
-        if (leverage > this.state.config.maxLeverage) {
-            warnings.push(`❌ BLOCKED: Leverage ${leverage.toFixed(2)}x exceeds max ${this.state.config.maxLeverage}x`);
-            blocked = true;
-            resultsDiv.classList.add('border-red-600');
-        }
-
-        if (blocked) {
-            warningsDiv.innerHTML = '<div class="text-red-400 font-bold">' + warnings.join('<br>') + '</div>';
-            this.state.riskCalculated = false;
-        } else {
-            warningsDiv.innerHTML = '<div class="text-green-400 font-bold">✅ All risk parameters valid</div>';
-            resultsDiv.classList.remove('border-red-600');
-            resultsDiv.classList.add('border-green-600');
-            this.state.riskCalculated = true;
+            document.getElementById('selectedSession').classList.remove('hidden');
+            document.getElementById('selectedSessionName').textContent = sessionNames[this.state.selectedSession];
         }
     },
 
     /**
-     * Confirm trade
+     * ============================================
+     * TRADE CONFIRMATION
+     * ============================================
      */
+
     confirmTrade() {
         // Pre-checks
         const canTradeResult = this.canTrade();
@@ -562,6 +420,7 @@ const IronLedger = {
             id: 'trade_' + Date.now(),
             timestamp: Date.now(),
             date: today,
+            session: this.state.selectedSession || 'unknown',
 
             // Structure
             structure: {
@@ -609,8 +468,8 @@ const IronLedger = {
 
         alert('✅ Trade confirmed and logged!\n\n⏳ Cooldown active: 2 hours\n\nRemember to complete post-trade log after exit.');
 
-        // Navigate to status
-        this.showScreen('status');
+        // Refresh the trading screen
+        this.updateTradingScreen();
     },
 
     /**
