@@ -1094,6 +1094,169 @@ const IronLedger = {
         } else if (type === 'error') {
             statusEl.className = 'mb-3 text-xs text-yellow-400';
         }
+    },
+
+    /**
+     * ============================================
+     * QUICK STATS (DELTA CONFIRMATION HELPER)
+     * ============================================
+     */
+
+    /**
+     * Fetch and display quick stats for Delta Confirmation
+     * - Pullback % from swing high/low
+     * - Volume vs 24h average
+     * - Price zone (premium/discount/equilibrium)
+     */
+    async fetchQuickStats() {
+        const symbol = document.getElementById('marketSymbol').value;
+
+        if (!symbol) {
+            alert('⚠️ Please select a coin in Market Context first');
+            return;
+        }
+
+        const display = document.getElementById('quickStatsDisplay');
+        const content = document.getElementById('quickStatsContent');
+
+        // Show loading state
+        display.classList.remove('hidden');
+        content.innerHTML = '<p class="text-gray-400">Loading...</p>';
+
+        try {
+            // Fetch 5-minute klines (last 100 candles = ~8.3 hours of data)
+            // This gives us enough data to find recent swing high/low
+            const klineData = await this.fetchBinance(
+                `/fapi/v1/klines?symbol=${symbol}&interval=5m&limit=100`
+            );
+
+            // Also fetch current 24hr stats for volume comparison
+            const statsData = await this.fetchBinance(`/fapi/v1/ticker/24hr?symbol=${symbol}`);
+
+            // Calculate stats
+            const stats = this.calculateQuickStats(klineData, statsData);
+
+            // Display results
+            this.displayQuickStats(stats);
+
+            console.log('📊 Quick Stats:', stats);
+
+        } catch (error) {
+            console.error('❌ Quick Stats fetch failed:', error);
+            content.innerHTML = '<p class="text-red-400">Failed to fetch stats. Please try again.</p>';
+        }
+    },
+
+    /**
+     * Calculate quick stats from kline data
+     */
+    calculateQuickStats(klineData, statsData) {
+        // Parse kline data
+        // Kline format: [openTime, open, high, low, close, volume, closeTime, ...]
+        const candles = klineData.map(k => ({
+            open: parseFloat(k[1]),
+            high: parseFloat(k[2]),
+            low: parseFloat(k[3]),
+            close: parseFloat(k[4]),
+            volume: parseFloat(k[5])
+        }));
+
+        // Get current price (most recent close)
+        const currentPrice = candles[candles.length - 1].close;
+
+        // Find swing high and swing low from recent candles
+        const swingHigh = Math.max(...candles.map(c => c.high));
+        const swingLow = Math.min(...candles.map(c => c.low));
+        const range = swingHigh - swingLow;
+
+        // Calculate pullback percentage from swing high
+        // Formula: (swingHigh - currentPrice) / (swingHigh - swingLow) * 100
+        const pullbackFromHigh = ((swingHigh - currentPrice) / range) * 100;
+
+        // Calculate retracement from swing low (for shorts)
+        const pullbackFromLow = ((currentPrice - swingLow) / range) * 100;
+
+        // Determine price zone
+        let priceZone = 'Equilibrium';
+        let zoneColor = 'text-yellow-400';
+
+        if (pullbackFromHigh <= 25) {
+            // In top 25% of range
+            priceZone = 'Premium (Top 25%)';
+            zoneColor = 'text-red-400';
+        } else if (pullbackFromHigh >= 75) {
+            // In bottom 25% of range
+            priceZone = 'Discount (Bottom 25%)';
+            zoneColor = 'text-green-400';
+        }
+
+        // Calculate average volume from candles
+        const avgVolume = candles.reduce((sum, c) => sum + c.volume, 0) / candles.length;
+        const currentVolume = candles[candles.length - 1].volume;
+        const volumeVsAvg = ((currentVolume / avgVolume) * 100) - 100; // % difference
+
+        // Also get 24h volume from stats
+        const volume24h = parseFloat(statsData.quoteVolume); // In USDT
+
+        return {
+            currentPrice,
+            swingHigh,
+            swingLow,
+            range,
+            pullbackFromHigh: pullbackFromHigh.toFixed(1),
+            pullbackFromLow: pullbackFromLow.toFixed(1),
+            priceZone,
+            zoneColor,
+            avgVolume5m: avgVolume.toFixed(0),
+            currentVolume5m: currentVolume.toFixed(0),
+            volumeVsAvg: volumeVsAvg.toFixed(1),
+            volume24h: (volume24h / 1_000_000).toFixed(2) // Convert to millions
+        };
+    },
+
+    /**
+     * Display quick stats in UI
+     */
+    displayQuickStats(stats) {
+        const content = document.getElementById('quickStatsContent');
+
+        const volumeColor = stats.volumeVsAvg > 0 ? 'text-green-400' : 'text-red-400';
+        const volumeIcon = stats.volumeVsAvg > 0 ? '📈' : '📉';
+
+        content.innerHTML = `
+            <p class="text-gray-300">
+                <span class="font-semibold">Current Price:</span>
+                <span class="font-mono text-blue-400">$${stats.currentPrice.toFixed(2)}</span>
+            </p>
+            <p class="text-gray-300">
+                <span class="font-semibold">Range:</span>
+                <span class="font-mono">${stats.swingLow.toFixed(2)} - ${stats.swingHigh.toFixed(2)}</span>
+                <span class="text-gray-500 text-xs ml-1">(~8h)</span>
+            </p>
+            <div class="h-1 bg-gray-700 rounded my-1"></div>
+            <p class="text-gray-300">
+                <span class="font-semibold">Pullback from High:</span>
+                <span class="font-mono text-orange-400">${stats.pullbackFromHigh}%</span>
+            </p>
+            <p class="text-gray-300">
+                <span class="font-semibold">Retrace from Low:</span>
+                <span class="font-mono text-cyan-400">${stats.pullbackFromLow}%</span>
+            </p>
+            <div class="h-1 bg-gray-700 rounded my-1"></div>
+            <p class="text-gray-300">
+                <span class="font-semibold">Price Zone:</span>
+                <span class="font-mono ${stats.zoneColor}">${stats.priceZone}</span>
+            </p>
+            <div class="h-1 bg-gray-700 rounded my-1"></div>
+            <p class="text-gray-300">
+                <span class="font-semibold">5m Volume vs Avg:</span>
+                <span class="font-mono ${volumeColor}">${stats.volumeVsAvg > 0 ? '+' : ''}${stats.volumeVsAvg}% ${volumeIcon}</span>
+            </p>
+            <p class="text-gray-300">
+                <span class="font-semibold">24h Volume:</span>
+                <span class="font-mono text-purple-400">$${stats.volume24h}M</span>
+            </p>
+        `.trim();
     }
 };
 
