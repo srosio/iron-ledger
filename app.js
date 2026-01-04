@@ -52,6 +52,7 @@ const IronLedger = {
         this.startTimers();
         this.showScreen('trading');
         this.updateStatusBar();
+        this.updateSessionTime(); // Show time immediately
         this.fetchHotCoins(); // Auto-load hot coins on startup
         console.log('✅ IronLedger ready');
     },
@@ -360,14 +361,78 @@ const IronLedger = {
      * Start background timers
      */
     startTimers() {
+        // Auto-select session based on current UTC time if none selected
+        if (!this.state.selectedSession) {
+            const currentSession = this.getCurrentSession();
+            if (currentSession) {
+                this.selectSession(currentSession);
+                console.log(`📍 Auto-selected ${currentSession} session based on current time`);
+            }
+        }
+
         // Update time and status every second
         setInterval(() => {
             this.updateStatusBar();
+            this.updateSessionTime();
             // Update trading screen if it's the current screen
             if (this.state.currentScreen === 'trading') {
                 this.updateTradingScreen();
             }
         }, 1000);
+    },
+
+    /**
+     * Get current session based on UTC time
+     * Returns: 'asian', 'london', 'newyork', or null if outside trading hours
+     */
+    getCurrentSession() {
+        const now = new Date();
+        const utcHours = now.getUTCHours();
+
+        // Asian: 00:00-08:00 UTC
+        if (utcHours >= 0 && utcHours < 8) {
+            return 'asian';
+        }
+        // London: 08:00-16:00 UTC
+        // New York: 13:00-21:00 UTC
+        // Overlap: 13:00-16:00 UTC
+        else if (utcHours >= 8 && utcHours < 13) {
+            // London only
+            return 'london';
+        }
+        else if (utcHours >= 13 && utcHours < 16) {
+            // Overlap - prefer New York as it's more volatile
+            return 'newyork';
+        }
+        else if (utcHours >= 16 && utcHours < 21) {
+            // New York only
+            return 'newyork';
+        }
+        // Outside trading hours: 21:00-00:00 UTC
+        else {
+            return null;
+        }
+    },
+
+    /**
+     * Update session time display
+     */
+    updateSessionTime() {
+        const now = new Date();
+
+        // Update local time
+        const localTime = now.toLocaleTimeString();
+        const localTimeEl = document.getElementById('currentLocalTime');
+        if (localTimeEl) {
+            localTimeEl.textContent = localTime;
+        }
+
+        // Update UTC time
+        const utcTime = now.toISOString().substr(11, 8);
+        const utcTimeEl = document.getElementById('currentUtcTime');
+        if (utcTimeEl) {
+            utcTimeEl.textContent = utcTime + ' UTC';
+        }
     },
 
     /**
