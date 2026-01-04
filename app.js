@@ -678,6 +678,10 @@ const IronLedger = {
             // Display the data and auto-fill manual fields
             this.displayMarketData(marketContext);
             this.autoFillMarketContext(marketContext);
+
+            // Analyze market context and show recommendation
+            this.analyzeMarketContext(marketContext);
+
             this.showMarketDataStatus(
                 `✓ Data fetched at ${new Date().toLocaleTimeString()}`,
                 'success'
@@ -890,6 +894,150 @@ const IronLedger = {
             oiTrend: oiSelect.value || 'manual',
             volumeTrend: volumeSelect.value
         });
+    },
+
+    /**
+     * Analyze market context and generate recommendation
+     */
+    analyzeMarketContext(data) {
+        const fundingRate = data.lastFundingRate;
+        const oiTrend = document.getElementById('contextOI').value;
+        const volumeTrend = document.getElementById('contextVolume').value;
+
+        let recommendation = 'WAIT';
+        let reasoning = [];
+        let confidence = 'LOW';
+        let bgColor = 'bg-gray-700 border-gray-600';
+        let titleColor = 'text-gray-300';
+
+        // Check for extreme funding (overextended)
+        if (Math.abs(fundingRate) > 0.05) {
+            recommendation = 'WAIT';
+            confidence = 'HIGH';
+            bgColor = 'bg-yellow-900 border-yellow-700';
+            titleColor = 'text-yellow-300';
+            reasoning.push(`⚠️ Extreme funding rate (${(fundingRate * 100).toFixed(3)}%) - Market overextended`);
+            reasoning.push('Wait for funding to normalize before entering');
+
+            this.displayRecommendation(recommendation, reasoning, confidence, bgColor, titleColor);
+            return;
+        }
+
+        // Check for dead market (falling OI + low volume)
+        if (oiTrend === 'falling' && volumeTrend === 'below') {
+            recommendation = 'WAIT';
+            confidence = 'HIGH';
+            bgColor = 'bg-gray-700 border-gray-600';
+            titleColor = 'text-gray-400';
+            reasoning.push('📉 Falling OI + Low Volume = Dead market');
+            reasoning.push('No conviction, trend dying - avoid trading');
+
+            this.displayRecommendation(recommendation, reasoning, confidence, bgColor, titleColor);
+            return;
+        }
+
+        // Check for LONG bias conditions
+        if (fundingRate <= 0.01 && oiTrend === 'rising' && volumeTrend === 'above') {
+            // Best long setup: Negative/low funding + rising OI + high volume
+            recommendation = 'LONG';
+            confidence = 'HIGH';
+            bgColor = 'bg-green-900 border-green-700';
+            titleColor = 'text-green-300';
+            reasoning.push(`✅ Funding: ${(fundingRate * 100).toFixed(3)}% (${fundingRate < 0 ? 'shorts paying longs' : 'neutral/low'})`);
+            reasoning.push('✅ Rising OI: New buyers entering positions');
+            reasoning.push('✅ Above Average Volume: Strong participation');
+            reasoning.push('');
+            reasoning.push('💡 Look for LONG setups: Sweep below + BOS up + Delta confirmation');
+        } else if ((fundingRate <= 0.005 || fundingRate <= 0.01) && oiTrend === 'rising' && volumeTrend === 'above') {
+            // Good long setup: Low funding + rising OI + volume
+            recommendation = 'LONG';
+            confidence = 'MEDIUM';
+            bgColor = 'bg-green-900 border-green-700';
+            titleColor = 'text-green-300';
+            reasoning.push(`✅ Funding: ${(fundingRate * 100).toFixed(3)}% (neutral/low - longs not overcrowded)`);
+            reasoning.push('✅ Rising OI: Fresh uptrend building');
+            reasoning.push('✅ Above Average Volume: Good participation');
+            reasoning.push('');
+            reasoning.push('💡 Look for LONG setups if structure aligns');
+        } else if (fundingRate < 0 && volumeTrend === 'above') {
+            // Potential reversal long
+            recommendation = 'LONG';
+            confidence = 'MEDIUM';
+            bgColor = 'bg-green-900 border-green-700';
+            titleColor = 'text-green-300';
+            reasoning.push(`✅ Funding: ${(fundingRate * 100).toFixed(3)}% (shorts paying longs)`);
+            reasoning.push(`⚠️ OI: ${oiTrend || 'unclear'} (monitor for rising)`);
+            reasoning.push('✅ Above Average Volume: Interest present');
+            reasoning.push('');
+            reasoning.push('💡 Potential reversal LONG - wait for structure confirmation');
+        }
+        // Check for SHORT bias conditions
+        else if (fundingRate >= 0.01 && oiTrend === 'rising' && volumeTrend === 'above') {
+            // Best short setup: Positive funding + rising OI + high volume
+            recommendation = 'SHORT';
+            confidence = 'HIGH';
+            bgColor = 'bg-red-900 border-red-700';
+            titleColor = 'text-red-300';
+            reasoning.push(`✅ Funding: ${(fundingRate * 100).toFixed(3)}% (longs paying shorts - overcrowded)`);
+            reasoning.push('✅ Rising OI: New sellers entering positions');
+            reasoning.push('✅ Above Average Volume: Strong participation');
+            reasoning.push('');
+            reasoning.push('💡 Look for SHORT setups: Sweep above + BOS down + Delta confirmation');
+        } else if (fundingRate >= 0.015 && volumeTrend === 'above') {
+            // Potential reversal short
+            recommendation = 'SHORT';
+            confidence = 'MEDIUM';
+            bgColor = 'bg-red-900 border-red-700';
+            titleColor = 'text-red-300';
+            reasoning.push(`✅ Funding: ${(fundingRate * 100).toFixed(3)}% (longs overcrowded)`);
+            reasoning.push(`⚠️ OI: ${oiTrend || 'unclear'} (monitor for rising)`);
+            reasoning.push('✅ Above Average Volume: Interest present');
+            reasoning.push('');
+            reasoning.push('💡 Potential reversal SHORT - wait for structure confirmation');
+        }
+        // Default to WAIT if no clear setup
+        else {
+            recommendation = 'WAIT';
+            confidence = 'MEDIUM';
+            bgColor = 'bg-gray-700 border-gray-600';
+            titleColor = 'text-gray-400';
+            reasoning.push(`ℹ️ Funding: ${(fundingRate * 100).toFixed(3)}% (${fundingRate > 0 ? 'longs paying shorts' : 'shorts paying longs'})`);
+            reasoning.push(`ℹ️ OI: ${oiTrend || 'not set'}`);
+            reasoning.push(`ℹ️ Volume: ${volumeTrend || 'not set'}`);
+            reasoning.push('');
+            reasoning.push('⚠️ Mixed or unclear signals - No strong bias');
+            reasoning.push('💡 Wait for clearer market context or only take A+ setups');
+        }
+
+        this.displayRecommendation(recommendation, reasoning, confidence, bgColor, titleColor);
+    },
+
+    /**
+     * Display market context recommendation in UI
+     */
+    displayRecommendation(recommendation, reasoning, confidence, bgColor, titleColor) {
+        const recommendationDiv = document.getElementById('marketRecommendation');
+        const titleEl = document.getElementById('recommendationTitle');
+        const contentEl = document.getElementById('recommendationContent');
+
+        // Show the recommendation section
+        recommendationDiv.classList.remove('hidden');
+        recommendationDiv.className = `mt-4 p-4 rounded border-2 ${bgColor}`;
+
+        // Set title with icon
+        const icons = {
+            'LONG': '🟢',
+            'SHORT': '🔴',
+            'WAIT': '⚪'
+        };
+        titleEl.className = `font-bold text-lg mb-2 ${titleColor}`;
+        titleEl.textContent = `${icons[recommendation]} ${recommendation} BIAS (${confidence} Confidence)`;
+
+        // Set content
+        contentEl.innerHTML = reasoning.map(line => {
+            if (line === '') return '<div class="h-2"></div>';
+            return `<p>${line}</p>`;
+        }).join('');
     },
 
     /**
