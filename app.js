@@ -323,40 +323,8 @@ const IronLedger = {
     },
 
     updateTradingScreen() {
-        // Update status info
+        // Update blocker in confirm section based on trade eligibility
         const canTradeResult = this.canTrade();
-        const lockAlert = document.getElementById('lockAlert');
-        const lockReason = document.getElementById('lockReason');
-
-        if (!canTradeResult.allowed) {
-            lockAlert.classList.remove('hidden');
-            lockReason.innerHTML = canTradeResult.reasons.map(r => `• ${r}`).join('<br>');
-        } else {
-            lockAlert.classList.add('hidden');
-        }
-
-        // Update trade counts
-        document.getElementById('statusTradesToday').textContent =
-            `${this.getTradesCount('today')} / ${this.state.config.maxTradesPerDay}`;
-        document.getElementById('statusTradesWeek').textContent =
-            `${this.getTradesCount('week')} / ${this.state.config.maxTradesPerWeek}`;
-
-        // Update cooldown
-        const cooldownEl = document.getElementById('statusCooldown');
-        if (this.state.limits.cooldownUntil && Date.now() < this.state.limits.cooldownUntil) {
-            const remaining = Math.ceil((this.state.limits.cooldownUntil - Date.now()) / 60000);
-            cooldownEl.textContent = `⏳ ${remaining}m`;
-            cooldownEl.className = 'text-lg font-bold text-yellow-400';
-        } else {
-            cooldownEl.textContent = '✅ Ready';
-            cooldownEl.className = 'text-lg font-bold text-green-400';
-        }
-
-        // Update active trades count
-        const activeTrades = this.state.trades.filter(t => t.status === 'confirmed' && !t.completed);
-        document.getElementById('statusActiveTrades').textContent = activeTrades.length;
-
-        // Update blocker in confirm section
         const blocker = document.getElementById('confirmBlocker');
         const blockerReason = document.getElementById('confirmBlockerReason');
         const confirmBtn = document.getElementById('confirmTradeBtn');
@@ -848,17 +816,11 @@ const IronLedger = {
         document.getElementById('marketOpenInterest').textContent =
             data.openInterest.toLocaleString('en-US', { maximumFractionDigits: 0 });
 
-        document.getElementById('marketVolume').textContent =
-            data.volume.toLocaleString('en-US', { maximumFractionDigits: 0 });
-
         const priceChangeEl = document.getElementById('marketPriceChange');
         priceChangeEl.textContent =
             (data.priceChangePercent >= 0 ? '+' : '') + data.priceChangePercent.toFixed(2) + '%';
         priceChangeEl.className = 'font-mono font-semibold ' +
             (data.priceChangePercent >= 0 ? 'text-green-400' : 'text-red-400');
-
-        document.getElementById('marketTimestamp').textContent =
-            new Date(data.fetchedAt).toLocaleTimeString();
     },
 
     /**
