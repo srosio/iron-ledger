@@ -372,17 +372,17 @@ const IronLedger = {
             return `
                 <button type="button"
                         onclick="IronLedger.selectHotCoin('${coin.symbol}')"
-                        class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded transition text-left relative">
-                    <div class="flex justify-between items-start mb-1">
-                        <div class="text-sm font-bold text-white">${coin.symbol.replace('USDT', '')}</div>
-                        <div class="px-2 py-0.5 ${badgeBg} rounded text-xs ${badgeText} font-semibold">
+                        class="px-2 py-1.5 bg-gray-700 hover:bg-gray-600 rounded transition text-left relative">
+                    <div class="flex justify-between items-start mb-0.5">
+                        <div class="text-xs font-bold text-white">${coin.symbol.replace('USDT', '')}</div>
+                        <div class="px-1.5 py-0.5 ${badgeBg} rounded text-[10px] ${badgeText} font-semibold leading-none">
                             ${badgeIcon} ${recommendation}
                         </div>
                     </div>
-                    <div class="text-xs ${change1hClass} font-semibold">
+                    <div class="text-[11px] ${change1hClass} font-semibold">
                         1h: ${change1h >= 0 ? '+' : ''}${change1h.toFixed(2)}% ${change1hIcon}
                     </div>
-                    <div class="text-xs ${change24hClass} opacity-75">
+                    <div class="text-[11px] ${change24hClass} opacity-75">
                         24h: ${change24h >= 0 ? '+' : ''}${change24h.toFixed(1)}%
                     </div>
                 </button>
