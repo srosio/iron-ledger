@@ -31,7 +31,9 @@ const IronLedger = {
         activeTradeId: null,
         // Market context snapshot (fetched from Binance)
         // This data is INFORMATIONAL ONLY and does NOT affect trade enforcement
-        marketContext: null
+        marketContext: null,
+        // OI history for tracking actual OI changes (per symbol)
+        oiHistory: {}
     },
 
     /**
@@ -60,6 +62,7 @@ const IronLedger = {
                 this.state.limits = parsed.limits || this.state.limits;
                 this.state.marketContext = parsed.marketContext || null;
                 this.state.selectedSession = parsed.selectedSession || null;
+                this.state.oiHistory = parsed.oiHistory || {};
                 console.log('📂 State loaded from LocalStorage');
             } catch (e) {
                 console.error('❌ Failed to load state:', e);
@@ -77,7 +80,8 @@ const IronLedger = {
             trades: this.state.trades,
             limits: this.state.limits,
             marketContext: this.state.marketContext,
-            selectedSession: this.state.selectedSession
+            selectedSession: this.state.selectedSession,
+            oiHistory: this.state.oiHistory
         };
         localStorage.setItem('ironledger_state', JSON.stringify(toSave));
         console.log('💾 State saved');
@@ -829,40 +833,73 @@ const IronLedger = {
 
     /**
      * Auto-fill manual context fields with fetched data
-     * Uses market correlation heuristics to determine OI and Volume trends
+     * Uses actual OI change data when available, falls back to heuristics
      */
     autoFillMarketContext(data) {
         // Auto-fill Funding Rate (direct value)
         document.getElementById('contextFunding').value = data.lastFundingRate.toFixed(4);
 
-        // Auto-calculate Open Interest trend
-        // Heuristic: Rising OI typically accompanies strong trends with significant funding
-        // - Strong price movement + high funding rate = Rising OI (traders adding positions)
-        // - Weak movement + low funding = Flat/Falling OI (low interest)
+        // Auto-calculate Open Interest trend using ACTUAL OI change
         const oiSelect = document.getElementById('contextOI');
-        const priceChange = Math.abs(data.priceChangePercent);
-        const fundingRate = Math.abs(data.lastFundingRate);
+        const symbol = data.symbol;
+        const currentOI = data.openInterest;
 
-        if (priceChange > 2 && fundingRate > 0.005) {
-            // Strong trend (>2% move) + significant funding (>0.005%) = Rising OI
-            // Indicates traders actively opening positions in trend direction
-            oiSelect.value = 'rising';
-            console.log('✓ OI trend: Rising (strong trend + funding)');
-        } else if (priceChange < 0.5 && fundingRate < 0.002) {
-            // Weak movement (<0.5%) + minimal funding (<0.002%) = Flat OI
-            // Low volatility and low interest indicates sideways market
-            oiSelect.value = 'flat';
-            console.log('✓ OI trend: Flat (low volatility)');
-        } else if (priceChange > 4) {
-            // Very strong move (>4%) even with normal funding = Likely rising OI
-            // Extreme volatility attracts traders
-            oiSelect.value = 'rising';
-            console.log('✓ OI trend: Rising (high volatility)');
+        // Get previous OI value for this symbol
+        const previousOI = this.state.oiHistory[symbol];
+
+        if (previousOI && previousOI.value) {
+            // We have historical data - calculate actual OI change
+            const oiChange = ((currentOI - previousOI.value) / previousOI.value) * 100;
+            const timeDiff = Date.now() - previousOI.timestamp;
+            const hoursSinceLastCheck = timeDiff / (1000 * 60 * 60);
+
+            console.log('📊 OI Change Analysis:', {
+                symbol,
+                previousOI: previousOI.value,
+                currentOI,
+                change: oiChange.toFixed(2) + '%',
+                hoursSince: hoursSinceLastCheck.toFixed(1) + 'h'
+            });
+
+            // Determine trend based on actual change
+            // Thresholds: >2% change = rising/falling, <2% = flat
+            if (oiChange > 2) {
+                oiSelect.value = 'rising';
+                console.log(`✓ OI trend: Rising (+${oiChange.toFixed(2)}% actual increase)`);
+            } else if (oiChange < -2) {
+                oiSelect.value = 'falling';
+                console.log(`✓ OI trend: Falling (${oiChange.toFixed(2)}% actual decrease)`);
+            } else {
+                oiSelect.value = 'flat';
+                console.log(`✓ OI trend: Flat (${oiChange.toFixed(2)}% minimal change)`);
+            }
         } else {
-            // Ambiguous - leave for manual assessment
-            oiSelect.value = '';
-            console.log('⚠️ OI trend: Unclear (manual input recommended)');
+            // No historical data - use heuristics as fallback
+            console.log('⚠️ No historical OI data for', symbol, '- using heuristics');
+            const priceChange = Math.abs(data.priceChangePercent);
+            const fundingRate = Math.abs(data.lastFundingRate);
+
+            if (priceChange > 2 && fundingRate > 0.005) {
+                oiSelect.value = 'rising';
+                console.log('✓ OI trend: Rising (heuristic - strong trend + funding)');
+            } else if (priceChange < 0.5 && fundingRate < 0.002) {
+                oiSelect.value = 'flat';
+                console.log('✓ OI trend: Flat (heuristic - low volatility)');
+            } else if (priceChange > 4) {
+                oiSelect.value = 'rising';
+                console.log('✓ OI trend: Rising (heuristic - high volatility)');
+            } else {
+                oiSelect.value = '';
+                console.log('⚠️ OI trend: Unclear (manual input recommended)');
+            }
         }
+
+        // Store current OI value for next comparison
+        this.state.oiHistory[symbol] = {
+            value: currentOI,
+            timestamp: Date.now()
+        };
+        this.saveState();
 
         // Auto-calculate 24h Volume trend
         // Heuristic: Compare volume to open interest and price volatility
