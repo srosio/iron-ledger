@@ -979,14 +979,23 @@ const IronLedger = {
      * Called manually via button click - no automatic polling
      */
     async fetchMarketData() {
-        const symbol = document.getElementById('marketSymbol').value;
+        let symbol = document.getElementById('marketSymbol').value.trim().toUpperCase();
 
-        // If no symbol selected, just hide the display and return
+        // If no symbol entered, just hide the display and return
         if (!symbol) {
             document.getElementById('marketDataDisplay').classList.add('hidden');
             document.getElementById('marketDataStatus').classList.add('hidden');
             return;
         }
+
+        // Auto-append USDT if not already present
+        // Allows users to type just "BTC" instead of "BTCUSDT"
+        if (!symbol.endsWith('USDT')) {
+            symbol = symbol + 'USDT';
+        }
+
+        // Update the input field with the full symbol
+        document.getElementById('marketSymbol').value = symbol;
 
         this.showMarketDataStatus('Fetching...', 'loading');
 
@@ -1452,12 +1461,20 @@ const IronLedger = {
      * - Price zone (premium/discount/equilibrium)
      */
     async fetchQuickStats() {
-        const symbol = document.getElementById('marketSymbol').value;
+        let symbol = document.getElementById('marketSymbol').value.trim().toUpperCase();
 
         if (!symbol) {
-            alert('⚠️ Please select a coin in Market Context first');
+            alert('⚠️ Please enter a coin symbol first (e.g., BTC)');
             return;
         }
+
+        // Auto-append USDT if not already present
+        if (!symbol.endsWith('USDT')) {
+            symbol = symbol + 'USDT';
+        }
+
+        // Update the input field with the full symbol
+        document.getElementById('marketSymbol').value = symbol;
 
         const display = document.getElementById('quickStatsDisplay');
         const content = document.getElementById('quickStatsContent');

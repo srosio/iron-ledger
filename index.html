@@ -76,10 +76,10 @@
 
                     <!-- Symbol Input -->
                     <div class="mb-4">
-                        <label class="block text-sm font-semibold mb-2">Symbol (e.g., BTCUSDT)</label>
+                        <label class="block text-sm font-semibold mb-2">Symbol <span class="text-gray-400 font-normal">(just type BTC, ETH, etc.)</span></label>
                         <div class="flex gap-2">
                             <input type="text" id="marketSymbol" list="symbolSuggestions"
-                                   placeholder="Type or select symbol..."
+                                   placeholder="BTC, ETH, SOL..."
                                    class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 uppercase"
                                    oninput="this.value = this.value.toUpperCase()">
                             <button type="button" onclick="IronLedger.fetchMarketData()"
