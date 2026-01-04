@@ -156,15 +156,18 @@ const IronLedger = {
      * Shows 1h and 24h price changes to identify current momentum
      * Also fetches market context and displays LONG/SHORT/WAIT recommendations
      * Caches results for 30 minutes to avoid excessive API calls
+     *
+     * @param {boolean} forceRefresh - If true, bypasses cache and fetches fresh data
      */
-    async fetchHotCoins() {
+    async fetchHotCoins(forceRefresh = false) {
         const display = document.getElementById('hotCoinsDisplay');
 
-        // Check cache - refresh if older than 30 minutes
+        // Check cache - refresh if older than 30 minutes (unless force refresh)
         const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
         const now = Date.now();
 
-        if (this.state.hotCoins.length > 0 &&
+        if (!forceRefresh &&
+            this.state.hotCoins.length > 0 &&
             this.state.hotCoinsTimestamp &&
             (now - this.state.hotCoinsTimestamp) < CACHE_DURATION) {
             // Use cached data
@@ -174,6 +177,7 @@ const IronLedger = {
         }
 
         // Fetch fresh data
+        console.log(forceRefresh ? '🔄 Force refreshing hot coins...' : '🔥 Fetching hot coins...');
         display.innerHTML = '<p class="text-xs text-gray-500">Loading hot coins...</p>';
 
         try {
