@@ -1188,19 +1188,15 @@ const IronLedger = {
     },
 
     /**
-     * Auto-fill manual context fields with fetched data
-     * Uses actual OI change data when available, falls back to heuristics
+     * Auto-calculate market context trends (OI and Volume)
+     * Returns calculated trends for use in analysis
      */
     autoFillMarketContext(data) {
-        // Auto-fill Funding Rate (direct value)
-        document.getElementById('contextFunding').value = data.lastFundingRate.toFixed(4);
-
-        // Auto-calculate Open Interest trend using ACTUAL OI change
-        const oiSelect = document.getElementById('contextOI');
         const symbol = data.symbol;
         const currentOI = data.openInterest;
 
-        // Get previous OI value for this symbol
+        // Calculate Open Interest trend using ACTUAL OI change
+        let oiTrend = 'flat';
         const previousOI = this.state.oiHistory[symbol];
 
         if (previousOI && previousOI.value) {
@@ -1220,13 +1216,13 @@ const IronLedger = {
             // Determine trend based on actual change
             // Thresholds: >2% change = rising/falling, <2% = flat
             if (oiChange > 2) {
-                oiSelect.value = 'rising';
+                oiTrend = 'rising';
                 console.log(`✓ OI trend: Rising (+${oiChange.toFixed(2)}% actual increase)`);
             } else if (oiChange < -2) {
-                oiSelect.value = 'falling';
+                oiTrend = 'falling';
                 console.log(`✓ OI trend: Falling (${oiChange.toFixed(2)}% actual decrease)`);
             } else {
-                oiSelect.value = 'flat';
+                oiTrend = 'flat';
                 console.log(`✓ OI trend: Flat (${oiChange.toFixed(2)}% minimal change)`);
             }
         } else {
@@ -1236,17 +1232,17 @@ const IronLedger = {
             const fundingRate = Math.abs(data.lastFundingRate);
 
             if (priceChange > 2 && fundingRate > 0.005) {
-                oiSelect.value = 'rising';
+                oiTrend = 'rising';
                 console.log('✓ OI trend: Rising (heuristic - strong trend + funding)');
             } else if (priceChange < 0.5 && fundingRate < 0.002) {
-                oiSelect.value = 'flat';
+                oiTrend = 'flat';
                 console.log('✓ OI trend: Flat (heuristic - low volatility)');
             } else if (priceChange > 4) {
-                oiSelect.value = 'rising';
+                oiTrend = 'rising';
                 console.log('✓ OI trend: Rising (heuristic - high volatility)');
             } else {
-                oiSelect.value = '';
-                console.log('⚠️ OI trend: Unclear (manual input recommended)');
+                oiTrend = 'flat';
+                console.log('⚠️ OI trend: Unclear - defaulting to flat');
             }
         }
 
@@ -1257,27 +1253,23 @@ const IronLedger = {
         };
         this.saveState();
 
-        // Auto-calculate 24h Volume trend
+        // Calculate 24h Volume trend
         // Heuristic: Compare volume to open interest and price volatility
-        // - High volume/OI ratio + volatility = Above average
-        // - Low volume/OI ratio + calm market = Below average
-        const volumeSelect = document.getElementById('contextVolume');
         const priceChange = Math.abs(data.priceChangePercent);
         const volumeToOI = data.volume / data.openInterest;
+        let volumeTrend = 'above';
 
         if (priceChange > 3 || volumeToOI > 15) {
             // High volatility (>3%) OR high volume relative to OI (>15x)
-            // Indicates active trading day - above average volume
-            volumeSelect.value = 'above';
+            volumeTrend = 'above';
             console.log('✓ Volume: Above Average (high activity)');
         } else if (priceChange < 1 && volumeToOI < 8) {
             // Low volatility (<1%) AND low volume/OI ratio (<8x)
-            // Quiet trading day - below average volume
-            volumeSelect.value = 'below';
+            volumeTrend = 'below';
             console.log('✓ Volume: Below Average (low activity)');
         } else {
             // Normal range - around average
-            volumeSelect.value = 'above'; // Default to above if not clearly below
+            volumeTrend = 'above';
             console.log('✓ Volume: Above Average (normal activity)');
         }
 
@@ -1285,9 +1277,15 @@ const IronLedger = {
             fundingRate: data.lastFundingRate.toFixed(4) + '%',
             priceChange: data.priceChangePercent.toFixed(2) + '%',
             volumeToOI: volumeToOI.toFixed(2) + 'x',
-            oiTrend: oiSelect.value || 'manual',
-            volumeTrend: volumeSelect.value
+            oiTrend: oiTrend,
+            volumeTrend: volumeTrend
         });
+
+        // Store calculated trends in market context for analysis
+        data.calculatedOI = oiTrend;
+        data.calculatedVolume = volumeTrend;
+
+        return data;
     },
 
     /**
@@ -1295,8 +1293,8 @@ const IronLedger = {
      */
     analyzeMarketContext(data) {
         const fundingRate = data.lastFundingRate;
-        const oiTrend = document.getElementById('contextOI').value;
-        const volumeTrend = document.getElementById('contextVolume').value;
+        const oiTrend = data.calculatedOI || 'flat';
+        const volumeTrend = data.calculatedVolume || 'above';
 
         let recommendation = 'WAIT';
         let reasoning = [];

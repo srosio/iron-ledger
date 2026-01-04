@@ -46,19 +46,19 @@
     <div class="container mx-auto px-4 py-6 max-w-7xl">
 
         <!-- Navigation Tabs -->
-        <nav class="mb-6 flex gap-2 flex-wrap">
+        <nav class="mb-6 flex gap-2">
             <button onclick="IronLedger.showScreen('trading')"
-                    class="tab-btn px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 transition"
+                    class="tab-btn px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 transition text-sm"
                     data-screen="trading">
                 📈 Trading
             </button>
             <button onclick="IronLedger.showScreen('log')"
-                    class="tab-btn px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 transition"
+                    class="tab-btn px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 transition text-sm"
                     data-screen="log">
                 📝 Post-Trade Log
             </button>
             <button onclick="IronLedger.showScreen('review')"
-                    class="tab-btn px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 transition"
+                    class="tab-btn px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 transition text-sm"
                     data-screen="review">
                 📊 Review
             </button>
@@ -122,32 +122,6 @@
 
                     <!-- Fetch Status -->
                     <div id="marketDataStatus" class="mb-3 text-sm hidden"></div>
-
-                    <!-- Market Context Fields -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                            <label class="block text-sm mb-1">Funding Rate (%)</label>
-                            <input type="number" id="contextFunding" step="0.01" placeholder="e.g., 0.01"
-                                   class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2">
-                        </div>
-                        <div>
-                            <label class="block text-sm mb-1">Open Interest</label>
-                            <select id="contextOI" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2">
-                                <option value="">Select</option>
-                                <option value="rising">Rising</option>
-                                <option value="falling">Falling</option>
-                                <option value="flat">Flat</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm mb-1">24h Volume</label>
-                            <select id="contextVolume" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2">
-                                <option value="">Select</option>
-                                <option value="above">Above Average</option>
-                                <option value="below">Below Average</option>
-                            </select>
-                        </div>
-                    </div>
 
                     <!-- Live Data Display -->
                     <div id="marketDataDisplay" class="hidden p-3 bg-gray-700 rounded border border-gray-600">
