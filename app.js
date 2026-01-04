@@ -906,6 +906,7 @@ const IronLedger = {
         // - High volume/OI ratio + volatility = Above average
         // - Low volume/OI ratio + calm market = Below average
         const volumeSelect = document.getElementById('contextVolume');
+        const priceChange = Math.abs(data.priceChangePercent);
         const volumeToOI = data.volume / data.openInterest;
 
         if (priceChange > 3 || volumeToOI > 15) {
