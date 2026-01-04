@@ -136,7 +136,7 @@
                     <!-- Hot Coins -->
                     <div class="mb-4">
                         <div class="flex justify-between items-center mb-2">
-                            <label class="text-sm font-semibold text-orange-400">🔥 Hot Coins (Top Volume)</label>
+                            <label class="text-sm font-semibold text-orange-400">🔥 Hot Coins (Futures - Top Volume)</label>
                             <button type="button" onclick="IronLedger.fetchHotCoins()"
                                     class="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white text-xs rounded transition">
                                 Refresh
@@ -145,6 +145,7 @@
                         <div id="hotCoinsDisplay" class="flex flex-wrap gap-2">
                             <p class="text-xs text-gray-500">Loading hot coins...</p>
                         </div>
+                        <p class="text-xs text-gray-400 mt-1">Showing 1h momentum and 24h context</p>
                     </div>
 
                     <!-- Fetch Status -->

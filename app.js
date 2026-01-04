@@ -153,6 +153,7 @@ const IronLedger = {
 
     /**
      * Fetch hot coins from Binance (top volume pairs)
+     * Shows 1h and 24h price changes to identify current momentum
      * Caches results for 30 minutes to avoid excessive API calls
      */
     async fetchHotCoins() {
@@ -175,30 +176,70 @@ const IronLedger = {
         display.innerHTML = '<p class="text-xs text-gray-500">Loading hot coins...</p>';
 
         try {
-            // Fetch all 24hr ticker data
+            // Fetch all 24hr ticker data (FUTURES only - /fapi/)
             const tickers = await this.fetchBinance('/fapi/v1/ticker/24hr');
 
-            // Filter for USDT perpetual pairs only (exclude BUSD, coins, etc.)
+            // Filter for USDT perpetual futures pairs only (exclude BUSD, spot, quarterly futures)
             // Sort by quote volume (volume in USDT) descending
-            const usdtPairs = tickers
+            const topPairs = tickers
                 .filter(t => t.symbol.endsWith('USDT') && !t.symbol.includes('_'))
                 .map(t => ({
                     symbol: t.symbol,
                     volume: parseFloat(t.quoteVolume),
-                    priceChange: parseFloat(t.priceChangePercent)
+                    priceChange24h: parseFloat(t.priceChangePercent),
+                    lastPrice: parseFloat(t.lastPrice)
                 }))
                 .sort((a, b) => b.volume - a.volume)
-                .slice(0, 15); // Top 15 coins
+                .slice(0, 15); // Top 15 by volume
+
+            // Fetch 1h price change for each coin (to see recent momentum)
+            // This helps identify coins moving RIGHT NOW vs just 24h volume
+            console.log('🔥 Fetching 1h price changes for top 15 coins...');
+
+            const coinsWithHourlyChange = await Promise.all(
+                topPairs.map(async (coin) => {
+                    try {
+                        // Fetch last 2 candles of 1h timeframe
+                        const klines = await this.fetchBinance(
+                            `/fapi/v1/klines?symbol=${coin.symbol}&interval=1h&limit=2`
+                        );
+
+                        if (klines && klines.length >= 2) {
+                            // kline format: [openTime, open, high, low, close, volume, ...]
+                            const previousClose = parseFloat(klines[0][4]);
+                            const currentClose = parseFloat(klines[1][4]);
+                            const priceChange1h = ((currentClose - previousClose) / previousClose) * 100;
+
+                            return {
+                                ...coin,
+                                priceChange1h: priceChange1h
+                            };
+                        } else {
+                            // Fallback if kline data unavailable
+                            return {
+                                ...coin,
+                                priceChange1h: 0
+                            };
+                        }
+                    } catch (error) {
+                        console.warn(`⚠️ Failed to fetch 1h data for ${coin.symbol}:`, error);
+                        return {
+                            ...coin,
+                            priceChange1h: 0
+                        };
+                    }
+                })
+            );
 
             // Cache the results
-            this.state.hotCoins = usdtPairs;
+            this.state.hotCoins = coinsWithHourlyChange;
             this.state.hotCoinsTimestamp = now;
             this.saveState();
 
             // Display
-            this.displayHotCoins(usdtPairs);
+            this.displayHotCoins(coinsWithHourlyChange);
 
-            console.log('🔥 Hot coins fetched:', usdtPairs.length);
+            console.log('🔥 Hot coins fetched:', coinsWithHourlyChange.length);
 
         } catch (error) {
             console.error('❌ Hot coins fetch failed:', error);
@@ -208,6 +249,7 @@ const IronLedger = {
 
     /**
      * Display hot coins as clickable buttons
+     * Shows 1h change (primary) and 24h change (secondary)
      */
     displayHotCoins(coins) {
         const display = document.getElementById('hotCoinsDisplay');
@@ -219,16 +261,23 @@ const IronLedger = {
 
         // Create button for each hot coin
         display.innerHTML = coins.map(coin => {
-            const changeClass = coin.priceChange >= 0 ? 'text-green-400' : 'text-red-400';
-            const changeIcon = coin.priceChange >= 0 ? '📈' : '📉';
+            // 1h change styling (primary indicator)
+            const change1hClass = coin.priceChange1h >= 0 ? 'text-green-400' : 'text-red-400';
+            const change1hIcon = coin.priceChange1h >= 0 ? '📈' : '📉';
+
+            // 24h change styling (secondary context)
+            const change24hClass = coin.priceChange24h >= 0 ? 'text-green-300' : 'text-red-300';
 
             return `
                 <button type="button"
                         onclick="IronLedger.selectHotCoin('${coin.symbol}')"
                         class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded transition text-left">
                     <div class="text-sm font-bold text-white">${coin.symbol.replace('USDT', '')}</div>
-                    <div class="text-xs ${changeClass}">
-                        ${coin.priceChange >= 0 ? '+' : ''}${coin.priceChange.toFixed(2)}% ${changeIcon}
+                    <div class="text-xs ${change1hClass} font-semibold">
+                        1h: ${coin.priceChange1h >= 0 ? '+' : ''}${coin.priceChange1h.toFixed(2)}% ${change1hIcon}
+                    </div>
+                    <div class="text-xs ${change24hClass} opacity-75">
+                        24h: ${coin.priceChange24h >= 0 ? '+' : ''}${coin.priceChange24h.toFixed(1)}%
                     </div>
                 </button>
             `;
