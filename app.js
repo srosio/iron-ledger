@@ -154,6 +154,7 @@ const IronLedger = {
     /**
      * Fetch hot coins from Binance (top volume pairs)
      * Shows 1h and 24h price changes to identify current momentum
+     * Also fetches market context and displays LONG/SHORT/WAIT recommendations
      * Caches results for 30 minutes to avoid excessive API calls
      */
     async fetchHotCoins() {
@@ -192,54 +193,85 @@ const IronLedger = {
                 .sort((a, b) => b.volume - a.volume)
                 .slice(0, 15); // Top 15 by volume
 
-            // Fetch 1h price change for each coin (to see recent momentum)
-            // This helps identify coins moving RIGHT NOW vs just 24h volume
-            console.log('🔥 Fetching 1h price changes for top 15 coins...');
+            // Fetch 1h price change + market context for each coin
+            console.log('🔥 Fetching 1h data and market context for top 15 coins...');
 
-            const coinsWithHourlyChange = await Promise.all(
+            const coinsWithAnalysis = await Promise.all(
                 topPairs.map(async (coin) => {
                     try {
-                        // Fetch last 2 candles of 1h timeframe
-                        const klines = await this.fetchBinance(
-                            `/fapi/v1/klines?symbol=${coin.symbol}&interval=1h&limit=2`
-                        );
+                        // Fetch in parallel: 1h klines, funding rate, OI, 24hr stats
+                        const [klines, premiumData, oiData, statsData] = await Promise.all([
+                            this.fetchBinance(`/fapi/v1/klines?symbol=${coin.symbol}&interval=1h&limit=2`),
+                            this.fetchBinance(`/fapi/v1/premiumIndex?symbol=${coin.symbol}`),
+                            this.fetchBinance(`/fapi/v1/openInterest?symbol=${coin.symbol}`),
+                            this.fetchBinance(`/fapi/v1/ticker/24hr?symbol=${coin.symbol}`)
+                        ]);
 
+                        // Calculate 1h price change
+                        let priceChange1h = 0;
                         if (klines && klines.length >= 2) {
-                            // kline format: [openTime, open, high, low, close, volume, ...]
                             const previousClose = parseFloat(klines[0][4]);
                             const currentClose = parseFloat(klines[1][4]);
-                            const priceChange1h = ((currentClose - previousClose) / previousClose) * 100;
-
-                            return {
-                                ...coin,
-                                priceChange1h: priceChange1h
-                            };
-                        } else {
-                            // Fallback if kline data unavailable
-                            return {
-                                ...coin,
-                                priceChange1h: 0
-                            };
+                            priceChange1h = ((currentClose - previousClose) / previousClose) * 100;
                         }
-                    } catch (error) {
-                        console.warn(`⚠️ Failed to fetch 1h data for ${coin.symbol}:`, error);
+
+                        // Extract market context data
+                        const fundingRate = parseFloat(premiumData.lastFundingRate) * 100; // Convert to %
+                        const openInterest = parseFloat(oiData.openInterest);
+                        const volume24h = parseFloat(statsData.volume);
+                        const priceChangePercent = parseFloat(statsData.priceChangePercent);
+
+                        // Calculate OI trend (simplified - compare to previous OI if available)
+                        let oiTrend = 'flat';
+                        const previousOI = this.state.oiHistory[coin.symbol];
+                        if (previousOI && previousOI.value) {
+                            const oiChange = ((openInterest - previousOI.value) / previousOI.value) * 100;
+                            if (oiChange > 2) oiTrend = 'rising';
+                            else if (oiChange < -2) oiTrend = 'falling';
+                        }
+
+                        // Calculate volume trend (simplified heuristic)
+                        const volumeToOI = volume24h / openInterest;
+                        const priceChange = Math.abs(priceChangePercent);
+                        const volumeTrend = (priceChange > 3 || volumeToOI > 15) ? 'above' : 'below';
+
+                        // Get recommendation
+                        const recommendation = this.calculateRecommendation(fundingRate, oiTrend, volumeTrend);
+
+                        // Store current OI for next comparison
+                        this.state.oiHistory[coin.symbol] = {
+                            value: openInterest,
+                            timestamp: Date.now()
+                        };
+
                         return {
                             ...coin,
-                            priceChange1h: 0
+                            priceChange1h,
+                            fundingRate,
+                            oiTrend,
+                            volumeTrend,
+                            recommendation
+                        };
+                    } catch (error) {
+                        console.warn(`⚠️ Failed to fetch data for ${coin.symbol}:`, error);
+                        return {
+                            ...coin,
+                            priceChange1h: 0,
+                            recommendation: 'WAIT'
                         };
                     }
                 })
             );
 
             // Cache the results
-            this.state.hotCoins = coinsWithHourlyChange;
+            this.state.hotCoins = coinsWithAnalysis;
             this.state.hotCoinsTimestamp = now;
             this.saveState();
 
             // Display
-            this.displayHotCoins(coinsWithHourlyChange);
+            this.displayHotCoins(coinsWithAnalysis);
 
-            console.log('🔥 Hot coins fetched:', coinsWithHourlyChange.length);
+            console.log('🔥 Hot coins with recommendations fetched:', coinsWithAnalysis.length);
 
         } catch (error) {
             console.error('❌ Hot coins fetch failed:', error);
@@ -248,8 +280,41 @@ const IronLedger = {
     },
 
     /**
+     * Calculate LONG/SHORT/WAIT recommendation from market context data
+     * Lightweight version for batch analysis (no UI display)
+     */
+    calculateRecommendation(fundingRate, oiTrend, volumeTrend) {
+        // Extreme funding - overextended
+        if (Math.abs(fundingRate) > 0.05) {
+            return 'WAIT';
+        }
+
+        // Dead market
+        if (oiTrend === 'falling' && volumeTrend === 'below') {
+            return 'WAIT';
+        }
+
+        // LONG conditions
+        if (fundingRate <= 0.01 && oiTrend === 'rising' && volumeTrend === 'above') {
+            return 'LONG';
+        } else if (fundingRate < 0 && volumeTrend === 'above') {
+            return 'LONG';
+        }
+
+        // SHORT conditions
+        if (fundingRate >= 0.01 && oiTrend === 'rising' && volumeTrend === 'above') {
+            return 'SHORT';
+        } else if (fundingRate >= 0.015 && volumeTrend === 'above') {
+            return 'SHORT';
+        }
+
+        // Default to WAIT
+        return 'WAIT';
+    },
+
+    /**
      * Display hot coins as clickable buttons
-     * Shows 1h change (primary) and 24h change (secondary)
+     * Shows 1h change, 24h change, and market bias recommendation
      */
     displayHotCoins(coins) {
         const display = document.getElementById('hotCoinsDisplay');
@@ -259,9 +324,9 @@ const IronLedger = {
             return;
         }
 
-        // Check if cache has old format (missing priceChange1h/priceChange24h)
+        // Check if cache has old format (missing priceChange1h/priceChange24h/recommendation)
         // If so, invalidate cache and trigger fresh fetch
-        if (coins.length > 0 && (coins[0].priceChange1h === undefined || coins[0].priceChange24h === undefined)) {
+        if (coins.length > 0 && (coins[0].priceChange1h === undefined || coins[0].priceChange24h === undefined || coins[0].recommendation === undefined)) {
             console.log('⚠️ Old cache format detected - refreshing hot coins...');
             this.state.hotCoins = [];
             this.state.hotCoinsTimestamp = null;
@@ -275,6 +340,7 @@ const IronLedger = {
             // Defensive: Use fallback values if properties missing
             const change1h = coin.priceChange1h ?? 0;
             const change24h = coin.priceChange24h ?? 0;
+            const recommendation = coin.recommendation ?? 'WAIT';
 
             // 1h change styling (primary indicator)
             const change1hClass = change1h >= 0 ? 'text-green-400' : 'text-red-400';
@@ -283,11 +349,32 @@ const IronLedger = {
             // 24h change styling (secondary context)
             const change24hClass = change24h >= 0 ? 'text-green-300' : 'text-red-300';
 
+            // Recommendation badge styling
+            let badgeBg, badgeText, badgeIcon;
+            if (recommendation === 'LONG') {
+                badgeBg = 'bg-green-700';
+                badgeText = 'text-green-200';
+                badgeIcon = '🟢';
+            } else if (recommendation === 'SHORT') {
+                badgeBg = 'bg-red-700';
+                badgeText = 'text-red-200';
+                badgeIcon = '🔴';
+            } else {
+                badgeBg = 'bg-gray-600';
+                badgeText = 'text-gray-300';
+                badgeIcon = '⚪';
+            }
+
             return `
                 <button type="button"
                         onclick="IronLedger.selectHotCoin('${coin.symbol}')"
-                        class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded transition text-left">
-                    <div class="text-sm font-bold text-white">${coin.symbol.replace('USDT', '')}</div>
+                        class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded transition text-left relative">
+                    <div class="flex justify-between items-start mb-1">
+                        <div class="text-sm font-bold text-white">${coin.symbol.replace('USDT', '')}</div>
+                        <div class="px-2 py-0.5 ${badgeBg} rounded text-xs ${badgeText} font-semibold">
+                            ${badgeIcon} ${recommendation}
+                        </div>
+                    </div>
                     <div class="text-xs ${change1hClass} font-semibold">
                         1h: ${change1h >= 0 ? '+' : ''}${change1h.toFixed(2)}% ${change1hIcon}
                     </div>
