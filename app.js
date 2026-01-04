@@ -201,49 +201,27 @@ const IronLedger = {
      * Check if trading is allowed (comprehensive check)
      */
     canTrade() {
-        const today = this.getToday();
         const reasons = [];
 
-        // 1. Check session time first to know which session we're in
-        const sessionStatus = this.getSessionStatus();
-        if (!sessionStatus.allowed) {
-            reasons.push('Outside trading hours');
-        }
-
-        // 2. Check if setup is locked for the CURRENT session
-        if (sessionStatus.session) {
-            const currentSessionKey = `${today}_${sessionStatus.session.toLowerCase()}`;
-            const sessionSetup = this.state.sessions[currentSessionKey];
-
-            if (!sessionSetup) {
-                reasons.push(`Pre-market setup not completed for ${sessionStatus.session} session`);
-            }
-
-            // 3. Check if bias is neutral for this session
-            if (sessionSetup?.bias === 'neutral') {
-                reasons.push('Bias is Neutral - trading disabled');
-            }
-        }
-
-        // 5. Check daily trade limit
+        // 1. Check daily trade limit
         const tradesToday = this.getTradesCount('today');
         if (tradesToday >= this.state.config.maxTradesPerDay) {
             reasons.push(`Daily limit reached (${this.state.config.maxTradesPerDay} trades)`);
         }
 
-        // 6. Check weekly trade limit
+        // 2. Check weekly trade limit
         const tradesWeek = this.getTradesCount('week');
         if (tradesWeek >= this.state.config.maxTradesPerWeek) {
             reasons.push(`Weekly limit reached (${this.state.config.maxTradesPerWeek} trades)`);
         }
 
-        // 7. Check cooldown
+        // 3. Check cooldown
         if (this.state.limits.cooldownUntil && Date.now() < this.state.limits.cooldownUntil) {
             const remaining = Math.ceil((this.state.limits.cooldownUntil - Date.now()) / 60000);
             reasons.push(`Cooldown active (${remaining} minutes remaining)`);
         }
 
-        // 8. Check suspension
+        // 4. Check suspension
         if (this.state.limits.suspensionUntil && Date.now() < this.state.limits.suspensionUntil) {
             reasons.push('Account suspended due to violations');
         }
@@ -327,136 +305,44 @@ const IronLedger = {
 
     updateSetupScreen() {
         const today = this.getToday();
-        const setupForm = document.getElementById('setupForm');
-        const setupsLockedContainer = document.getElementById('setupsLockedContainer');
+        const todayContext = this.state.marketContext && this.state.marketContext[today];
 
-        // Check for locked sessions today
-        const londonKey = `${today}_london`;
-        const newyorkKey = `${today}_newyork`;
-        const londonSetup = this.state.sessions[londonKey];
-        const newyorkSetup = this.state.sessions[newyorkKey];
-
-        // Display locked setups
-        if (londonSetup || newyorkSetup) {
-            setupsLockedContainer.classList.remove('hidden');
-            let lockedHTML = '';
-
-            if (londonSetup) {
-                lockedHTML += `
-                    <div class="p-4 bg-green-900 border border-green-700 rounded mb-3">
-                        <p class="font-semibold text-green-300">✓ London Session Locked</p>
-                        <div class="text-sm text-gray-300 mt-2">
-                            <p><strong>Bias:</strong> ${londonSetup.bias.toUpperCase()}</p>
-                            <p class="text-xs text-gray-400 mt-1">Locked at ${new Date(londonSetup.lockedAt).toLocaleString()}</p>
-                        </div>
-                    </div>
-                `;
+        // Just update the form with saved market context if it exists
+        if (todayContext) {
+            if (todayContext.symbol) {
+                document.getElementById('marketSymbol').value = todayContext.symbol;
             }
-
-            if (newyorkSetup) {
-                lockedHTML += `
-                    <div class="p-4 bg-green-900 border border-green-700 rounded">
-                        <p class="font-semibold text-green-300">✓ New York Session Locked</p>
-                        <div class="text-sm text-gray-300 mt-2">
-                            <p><strong>Bias:</strong> ${newyorkSetup.bias.toUpperCase()}</p>
-                            <p class="text-xs text-gray-400 mt-1">Locked at ${new Date(newyorkSetup.lockedAt).toLocaleString()}</p>
-                        </div>
-                    </div>
-                `;
+            if (todayContext.funding) {
+                document.getElementById('contextFunding').value = todayContext.funding;
             }
-
-            setupsLockedContainer.innerHTML = lockedHTML;
-
-            // If both sessions locked, hide form
-            if (londonSetup && newyorkSetup) {
-                setupForm.classList.add('hidden');
-            } else {
-                setupForm.classList.remove('hidden');
+            if (todayContext.openInterest) {
+                document.getElementById('contextOI').value = todayContext.openInterest;
             }
-        } else {
-            setupsLockedContainer.classList.add('hidden');
-            setupForm.classList.remove('hidden');
-        }
-
-        // Set initial balance if saved for today
-        const initialBalanceInput = document.getElementById('setupInitialBalance');
-        if (this.state.config.initialBalance) {
-            initialBalanceInput.value = this.state.config.initialBalance;
-        }
-
-        // Display local date
-        const localDateEl = document.getElementById('setupLocalDate');
-        if (localDateEl) {
-            const localDate = new Date().toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            localDateEl.textContent = localDate;
+            if (todayContext.volume) {
+                document.getElementById('contextVolume').value = todayContext.volume;
+            }
         }
     },
 
     lockSetup() {
         const today = this.getToday();
-        const session = document.getElementById('setupSession').value;
 
-        // Create unique key for this session
-        const sessionKey = `${today}_${session}`;
-
-        // Check if this specific session is already locked
-        if (this.state.sessions[sessionKey]) {
-            alert(`⚠️ ${session === 'london' ? 'London' : 'New York'} session already locked for today!`);
-            return;
-        }
-
-        // Save initial balance (applies to all setups for the day)
-        const initialBalance = parseFloat(document.getElementById('setupInitialBalance').value);
-        if (initialBalance && initialBalance > 0) {
-            this.state.config.initialBalance = initialBalance;
-        }
-
-        // Gather all data
-        const bias = document.getElementById('setupBias').value;
-
-        const levels = {
-            yesterdayHigh: parseFloat(document.getElementById('levelYesterdayHigh').value) || null,
-            yesterdayLow: parseFloat(document.getElementById('levelYesterdayLow').value) || null,
-            yesterdayClose: parseFloat(document.getElementById('levelYesterdayClose').value) || null,
-            asianHigh: parseFloat(document.getElementById('levelAsianHigh').value) || null,
-            asianLow: parseFloat(document.getElementById('levelAsianLow').value) || null,
-            weeklyHigh: parseFloat(document.getElementById('levelWeeklyHigh').value) || null,
-            weeklyLow: parseFloat(document.getElementById('levelWeeklyLow').value) || null,
-            prevWeekHigh: parseFloat(document.getElementById('levelPrevWeekHigh').value) || null,
-            prevWeekLow: parseFloat(document.getElementById('levelPrevWeekLow').value) || null
-        };
-
-        const liquidity = {
-            equalHighs: document.getElementById('liquidityEqualHighs').value.split(',').map(s => s.trim()).filter(Boolean),
-            equalLows: document.getElementById('liquidityEqualLows').value.split(',').map(s => s.trim()).filter(Boolean),
-            psychological: document.getElementById('liquidityPsych').value.split(',').map(s => s.trim()).filter(Boolean)
-        };
-
+        // Save market context (optional)
         const context = {
+            symbol: document.getElementById('marketSymbol').value || null,
             funding: parseFloat(document.getElementById('contextFunding').value) || null,
             openInterest: document.getElementById('contextOI').value || null,
-            volume: document.getElementById('contextVolume').value || null
+            volume: document.getElementById('contextVolume').value || null,
+            savedAt: Date.now()
         };
 
-        // Save to state using unique session key
-        this.state.sessions[sessionKey] = {
-            date: today,
-            session,
-            bias,
-            levels,
-            liquidity,
-            context,
-            lockedAt: Date.now()
-        };
+        // Store market context for today
+        this.state.marketContext = this.state.marketContext || {};
+        this.state.marketContext[today] = context;
 
         this.saveState();
 
-        alert(`✅ ${session === 'london' ? 'London' : 'New York'} session setup locked!\n\nYou can still set up the other session if needed.`);
+        alert(`✅ Market context saved!`);
         this.updateSetupScreen();
     },
 
@@ -485,25 +371,15 @@ const IronLedger = {
             lockAlert.classList.add('hidden');
         }
 
-        // Session status
-        const sessionStatus = this.getSessionStatus();
+        // Session status - simplified (always show as active during trading hours)
         const statusEl = document.getElementById('statusSessionStatus');
-        if (sessionStatus.allowed) {
-            statusEl.textContent = `✅ ${sessionStatus.session}`;
-            statusEl.className = 'text-xl font-bold text-green-400';
-        } else {
-            statusEl.textContent = '🚫 Closed';
-            statusEl.className = 'text-xl font-bold text-red-400';
-        }
+        statusEl.textContent = '✅ Active';
+        statusEl.className = 'text-xl font-bold text-green-400';
 
-        // Bias
+        // Bias - simplified (no bias tracking)
         const biasEl = document.getElementById('statusBias');
-        const bias = this.state.sessions[today]?.bias || 'Not Set';
-        biasEl.textContent = bias.toUpperCase();
-        if (bias === 'bullish') biasEl.className = 'text-xl font-bold text-green-400';
-        else if (bias === 'bearish') biasEl.className = 'text-xl font-bold text-red-400';
-        else if (bias === 'neutral') biasEl.className = 'text-xl font-bold text-yellow-400';
-        else biasEl.className = 'text-xl font-bold text-gray-400';
+        biasEl.textContent = 'N/A';
+        biasEl.className = 'text-xl font-bold text-gray-400';
 
         // Trades
         document.getElementById('statusTradesToday').textContent =
@@ -522,35 +398,24 @@ const IronLedger = {
             cooldownEl.className = 'text-xl font-bold text-green-400';
         }
 
-        // Today's setup
+        // Today's market context
         const setupDisplay = document.getElementById('todaySetupDisplay');
-        const londonKey = `${today}_london`;
-        const newyorkKey = `${today}_newyork`;
-        const londonSetup = this.state.sessions[londonKey];
-        const newyorkSetup = this.state.sessions[newyorkKey];
+        const todayContext = this.state.marketContext && this.state.marketContext[today];
 
-        let setupHTML = '';
-        if (londonSetup) {
-            setupHTML += `
-                <div class="mb-3">
-                    <p><strong>London Session:</strong> ${londonSetup.bias.toUpperCase()}</p>
-                    <p class="text-xs text-gray-400">Locked at ${new Date(londonSetup.lockedAt).toLocaleString()}</p>
-                </div>
-            `;
-        }
-        if (newyorkSetup) {
-            setupHTML += `
+        if (todayContext && todayContext.symbol) {
+            setupDisplay.innerHTML = `
                 <div>
-                    <p><strong>New York Session:</strong> ${newyorkSetup.bias.toUpperCase()}</p>
-                    <p class="text-xs text-gray-400">Locked at ${new Date(newyorkSetup.lockedAt).toLocaleString()}</p>
+                    <p><strong>Symbol:</strong> ${todayContext.symbol}</p>
+                    <p class="text-sm text-gray-400">
+                        Funding: ${todayContext.funding || 'N/A'} |
+                        OI: ${todayContext.openInterest || 'N/A'} |
+                        Volume: ${todayContext.volume || 'N/A'}
+                    </p>
+                    <p class="text-xs text-gray-500">Saved at ${new Date(todayContext.savedAt).toLocaleString()}</p>
                 </div>
             `;
-        }
-
-        if (setupHTML) {
-            setupDisplay.innerHTML = setupHTML;
         } else {
-            setupDisplay.innerHTML = '<p class="text-gray-500">No setup for today</p>';
+            setupDisplay.innerHTML = '<p class="text-gray-500">No market context saved for today</p>';
         }
 
         // Active trades
@@ -559,8 +424,8 @@ const IronLedger = {
         if (activeTrades.length > 0) {
             activeDisplay.innerHTML = activeTrades.map(t => `
                 <div class="bg-gray-700 p-2 rounded mb-2">
-                    <p><strong>${t.direction.toUpperCase()}</strong> @ ${t.entry} | SL: ${t.stopLoss}</p>
-                    <p class="text-xs text-gray-400">${new Date(t.timestamp).toLocaleTimeString()}</p>
+                    <p><strong>Trade Confirmed</strong></p>
+                    <p class="text-xs text-gray-400">${new Date(t.timestamp).toLocaleString()}</p>
                 </div>
             `).join('');
         } else {
@@ -683,12 +548,6 @@ const IronLedger = {
             return;
         }
 
-        // Check risk calculated
-        if (!this.state.riskCalculated) {
-            alert('⚠️ Please calculate risk first and ensure no violations');
-            return;
-        }
-
         // Check pullback retrace
         const pullbackRetrace = parseFloat(document.getElementById('deltaPullbackRetrace').value);
         if (pullbackRetrace >= 30) {
@@ -696,18 +555,13 @@ const IronLedger = {
             return;
         }
 
-        // Gather all trade data
+        // Gather trade data
         const today = this.getToday();
-        const sessionStatus = this.getSessionStatus();
-        const currentSessionKey = `${today}_${sessionStatus.session.toLowerCase()}`;
-        const sessionSetup = this.state.sessions[currentSessionKey];
 
         const tradeData = {
             id: 'trade_' + Date.now(),
             timestamp: Date.now(),
             date: today,
-            session: sessionSetup.session,
-            bias: sessionSetup.bias,
 
             // Structure
             structure: {
@@ -731,26 +585,13 @@ const IronLedger = {
                 noOpposing: document.querySelector('[data-rule="noOpposingDelta"]').checked
             },
 
-            // Risk
-            accountSize: parseFloat(document.getElementById('riskAccountSize').value),
-            riskPercent: parseFloat(document.getElementById('riskPercent').value),
-            direction: document.getElementById('riskDirection').value,
-            entry: parseFloat(document.getElementById('riskEntryPrice').value),
-            stopLoss: parseFloat(document.getElementById('riskStopLoss').textContent),
-            leverage: parseFloat(document.getElementById('riskLeverage').textContent.replace('x', '')),
-
-            // Execution
-            tp1: parseFloat(document.getElementById('execTP1').value),
-            tp2: parseFloat(document.getElementById('execTP2').value),
-            emotional: document.getElementById('execEmotional').value,
-            quality: document.getElementById('execQuality').value,
-
             status: 'confirmed',
             completed: false,
 
-            // Market Context Snapshot (INFORMATIONAL ONLY - attached for review purposes)
-            // This data does NOT influence trade approval or enforcement
-            marketContext: this.state.marketContext ? { ...this.state.marketContext } : null
+            // Market Context Snapshot (optional)
+            marketContext: this.state.marketContext && this.state.marketContext[today]
+                ? { ...this.state.marketContext[today] }
+                : null
         };
 
         // Save trade
@@ -765,8 +606,6 @@ const IronLedger = {
 
         // Reset form
         document.getElementById('confirmForm').reset();
-        this.state.riskCalculated = false;
-        document.getElementById('riskResults').classList.add('hidden');
 
         alert('✅ Trade confirmed and logged!\n\n⏳ Cooldown active: 2 hours\n\nRemember to complete post-trade log after exit.');
 
@@ -799,7 +638,7 @@ const IronLedger = {
             // Populate selector
             select.innerHTML = incompleteTrades.map(t => `
                 <option value="${t.id}">
-                    ${new Date(t.timestamp).toLocaleString()} - ${t.direction.toUpperCase()} @ ${t.entry}
+                    ${new Date(t.timestamp).toLocaleString()} - Trade Confirmed
                 </option>
             `).join('');
 
@@ -914,23 +753,13 @@ const IronLedger = {
         // R:R (placeholder - would need more data)
         document.getElementById('reviewWeeklyRR').textContent = '1.5';
 
-        // Session breakdown
-        const londonTrades = weekTrades.filter(t => t.session === 'london');
-        const nyTrades = weekTrades.filter(t => t.session === 'newyork');
-
-        const londonWins = londonTrades.filter(t => t.outcome === 'win').length;
-        const nyWins = nyTrades.filter(t => t.outcome === 'win').length;
-
+        // Session breakdown - simplified
         document.getElementById('reviewSessionLondon').innerHTML = `
-            <p>Trades: ${londonTrades.length}</p>
-            <p>Wins: ${londonWins}</p>
-            <p>Win Rate: ${londonTrades.length > 0 ? ((londonWins / londonTrades.length) * 100).toFixed(1) : 0}%</p>
+            <p class="text-gray-500">Session tracking not enabled</p>
         `;
 
         document.getElementById('reviewSessionNY').innerHTML = `
-            <p>Trades: ${nyTrades.length}</p>
-            <p>Wins: ${nyWins}</p>
-            <p>Win Rate: ${nyTrades.length > 0 ? ((nyWins / nyTrades.length) * 100).toFixed(1) : 0}%</p>
+            <p class="text-gray-500">Session tracking not enabled</p>
         `;
 
         // Most violated rule (placeholder)
@@ -941,13 +770,12 @@ const IronLedger = {
         const recentTrades = completedTrades.slice(-10).reverse();
 
         if (recentTrades.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500">No completed trades</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500">No completed trades</td></tr>';
         } else {
             tableBody.innerHTML = recentTrades.map(t => `
                 <tr class="hover:bg-gray-700">
                     <td class="p-2">${t.date}</td>
-                    <td class="p-2">${t.session === 'london' ? 'London' : 'NY'}</td>
-                    <td class="p-2">${t.direction.toUpperCase()}</td>
+                    <td class="p-2">${new Date(t.timestamp).toLocaleTimeString()}</td>
                     <td class="p-2">
                         <span class="px-2 py-1 rounded text-xs ${
                             t.outcome === 'win' ? 'bg-green-900 text-green-300' :
@@ -960,7 +788,6 @@ const IronLedger = {
                     <td class="p-2 ${t.pnl >= 0 ? 'text-green-400' : 'text-red-400'}">
                         ${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)}
                     </td>
-                    <td class="p-2">${t.quality}</td>
                 </tr>
             `).join('');
         }

@@ -79,132 +79,10 @@
              ======================================== -->
         <section id="screen-setup" class="screen-section">
             <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
-                <h2 class="text-2xl font-bold mb-4 text-blue-400">Pre-Market Setup</h2>
-                <p class="text-sm text-gray-400 mb-6">Lock your bias and structure before trading. You can set up both sessions (max 2/day). Each setup locks when confirmed.</p>
-
-                <!-- Locked Setups Display -->
-                <div id="setupsLockedContainer" class="hidden mb-6"></div>
+                <h2 class="text-2xl font-bold mb-4 text-blue-400">Market Context</h2>
+                <p class="text-sm text-gray-400 mb-6">Select symbol to auto-fetch live market data, or enter manually.</p>
 
                 <form id="setupForm" class="space-y-6">
-                    <!-- Initial Balance Configuration -->
-                    <div class="bg-blue-900 border border-blue-700 p-4 rounded">
-                        <label class="block text-sm font-semibold mb-2 text-blue-300">💰 Initial Balance (Today)</label>
-                        <input type="number" id="setupInitialBalance" step="0.01" min="0"
-                               class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100"
-                               placeholder="e.g., 10000">
-                        <p class="text-xs text-gray-400 mt-1">Set your starting balance for risk calculations. This persists for the trading day.</p>
-                    </div>
-
-                    <!-- Date -->
-                    <div>
-                        <label class="block text-sm font-semibold mb-2">Date</label>
-                        <input type="date" id="setupDate"
-                               class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100"
-                               required readonly>
-                        <p id="setupLocalDate" class="text-xs text-gray-500 mt-1"></p>
-                    </div>
-
-                    <!-- Session -->
-                    <div>
-                        <label class="block text-sm font-semibold mb-2">Session *</label>
-                        <select id="setupSession"
-                                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100"
-                                required>
-                            <option value="">Select Session</option>
-                            <option value="london">London (08:00-12:00 UTC)</option>
-                            <option value="newyork">New York (13:00-17:00 UTC)</option>
-                        </select>
-                        <p class="text-xs text-yellow-400 mt-1">ℹ️ You can set up both sessions. Each locks separately.</p>
-                    </div>
-
-                    <!-- 15M Bias -->
-                    <div>
-                        <label class="block text-sm font-semibold mb-2">15M Bias *</label>
-                        <select id="setupBias"
-                                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100"
-                                required>
-                            <option value="">Select Bias</option>
-                            <option value="bullish">Bullish</option>
-                            <option value="bearish">Bearish</option>
-                            <option value="neutral">Neutral (Trading Disabled)</option>
-                        </select>
-                        <p class="text-xs text-yellow-400 mt-1">⚠️ If Neutral, all trading will be disabled</p>
-                    </div>
-
-                    <!-- Key Levels -->
-                    <div class="bg-gray-700 p-4 rounded">
-                        <h3 class="font-semibold mb-3 text-blue-300">Key Levels</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs mb-1">Yesterday High</label>
-                                <input type="number" id="levelYesterdayHigh" step="0.01"
-                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">Yesterday Low</label>
-                                <input type="number" id="levelYesterdayLow" step="0.01"
-                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">Yesterday Close</label>
-                                <input type="number" id="levelYesterdayClose" step="0.01"
-                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">Asian High</label>
-                                <input type="number" id="levelAsianHigh" step="0.01"
-                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">Asian Low</label>
-                                <input type="number" id="levelAsianLow" step="0.01"
-                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">Weekly High</label>
-                                <input type="number" id="levelWeeklyHigh" step="0.01"
-                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">Weekly Low</label>
-                                <input type="number" id="levelWeeklyLow" step="0.01"
-                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">Previous Week High</label>
-                                <input type="number" id="levelPrevWeekHigh" step="0.01"
-                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">Previous Week Low</label>
-                                <input type="number" id="levelPrevWeekLow" step="0.01"
-                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Liquidity Pools -->
-                    <div class="bg-gray-700 p-4 rounded">
-                        <h3 class="font-semibold mb-3 text-blue-300">Liquidity Pools</h3>
-                        <div class="space-y-2">
-                            <div>
-                                <label class="block text-xs mb-1">Equal Highs (comma-separated prices)</label>
-                                <input type="text" id="liquidityEqualHighs" placeholder="e.g., 42000, 41500"
-                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">Equal Lows (comma-separated prices)</label>
-                                <input type="text" id="liquidityEqualLows" placeholder="e.g., 40000, 39500"
-                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">Psychological Levels (comma-separated)</label>
-                                <input type="text" id="liquidityPsych" placeholder="e.g., 40000, 41000"
-                                       class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm">
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Market Context -->
                     <div class="bg-gray-700 p-4 rounded">
                         <h3 class="font-semibold mb-3 text-blue-300">Market Context</h3>
@@ -296,7 +174,7 @@
 
                     <button type="submit"
                             class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition">
-                        🔒 LOCK SETUP (Cannot be changed)
+                        💾 SAVE MARKET CONTEXT
                     </button>
                 </form>
             </div>
@@ -450,126 +328,6 @@
                                     <span class="text-sm">No aggressive opposing delta</span>
                                 </label>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- SECTION C: RISK & POSITION CALCULATOR -->
-                    <div class="bg-gray-700 p-4 rounded">
-                        <h3 class="font-bold text-lg mb-4 text-yellow-300">C. Risk & Position Calculator</h3>
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm mb-1">Account Size ($)</label>
-                                    <input type="number" id="riskAccountSize" step="0.01"
-                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
-                                </div>
-                                <div>
-                                    <label class="block text-sm mb-1">Risk % (Max varies by settings)</label>
-                                    <input type="number" id="riskPercent" step="0.1" max="1" value="1"
-                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
-                                </div>
-                                <div>
-                                    <label class="block text-sm mb-1">Trade Direction</label>
-                                    <select id="riskDirection"
-                                            class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
-                                        <option value="">Select</option>
-                                        <option value="long">Long</option>
-                                        <option value="short">Short</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-sm mb-1">Entry Price</label>
-                                    <input type="number" id="riskEntryPrice" step="0.01"
-                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
-                                </div>
-                                <div>
-                                    <label class="block text-sm mb-1">Sweep Candle High</label>
-                                    <input type="number" id="riskSweepHigh" step="0.01"
-                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
-                                </div>
-                                <div>
-                                    <label class="block text-sm mb-1">Sweep Candle Low</label>
-                                    <input type="number" id="riskSweepLow" step="0.01"
-                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
-                                </div>
-                            </div>
-
-                            <button type="button" onclick="IronLedger.calculateRisk()"
-                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded transition">
-                                Calculate Position
-                            </button>
-
-                            <!-- Results -->
-                            <div id="riskResults" class="hidden mt-4 p-4 bg-gray-600 rounded border-l-4">
-                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                                    <div>
-                                        <p class="text-gray-400">Stop Loss</p>
-                                        <p id="riskStopLoss" class="font-bold"></p>
-                                    </div>
-                                    <div>
-                                        <p class="text-gray-400">Stop Distance</p>
-                                        <p id="riskStopDistance" class="font-bold"></p>
-                                    </div>
-                                    <div>
-                                        <p class="text-gray-400">Dollar Risk</p>
-                                        <p id="riskDollarRisk" class="font-bold"></p>
-                                    </div>
-                                    <div>
-                                        <p class="text-gray-400">Position Size</p>
-                                        <p id="riskPositionSize" class="font-bold"></p>
-                                    </div>
-                                    <div>
-                                        <p class="text-gray-400">Required Leverage</p>
-                                        <p id="riskLeverage" class="font-bold"></p>
-                                    </div>
-                                </div>
-                                <div id="riskWarnings" class="mt-3 text-sm"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SECTION D: EXECUTION CONFIRMATION -->
-                    <div class="bg-gray-700 p-4 rounded">
-                        <h3 class="font-bold text-lg mb-4 text-yellow-300">D. Execution Confirmation</h3>
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm mb-1">TP1 at 1.5R</label>
-                                    <input type="number" id="execTP1" step="0.01"
-                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
-                                </div>
-                                <div>
-                                    <label class="block text-sm mb-1">TP2 (Opposing Liquidity/Structure)</label>
-                                    <input type="number" id="execTP2" step="0.01"
-                                           class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
-                                </div>
-                                <div>
-                                    <label class="block text-sm mb-1">Emotional State</label>
-                                    <select id="execEmotional"
-                                            class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
-                                        <option value="">Select</option>
-                                        <option value="calm">Calm</option>
-                                        <option value="confident">Confident</option>
-                                        <option value="anxious">Anxious</option>
-                                        <option value="impatient">Impatient</option>
-                                        <option value="fomo">FOMO</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-sm mb-1">Setup Quality</label>
-                                    <select id="execQuality"
-                                            class="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1" required>
-                                        <option value="">Select</option>
-                                        <option value="A">A - Perfect</option>
-                                        <option value="B">B - Good</option>
-                                        <option value="C">C - Acceptable</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <label class="flex items-start gap-3 cursor-pointer hover:bg-gray-600 p-2 rounded transition">
-                                <input type="checkbox" id="execStopConfirm" class="mt-1" required>
-                                <span class="text-sm">Mechanical stop placement confirmed (no discretion)</span>
-                            </label>
                         </div>
                     </div>
 
@@ -757,11 +515,9 @@
                                 <thead class="bg-gray-700">
                                     <tr>
                                         <th class="p-2 text-left">Date</th>
-                                        <th class="p-2 text-left">Session</th>
-                                        <th class="p-2 text-left">Direction</th>
+                                        <th class="p-2 text-left">Time</th>
                                         <th class="p-2 text-left">Outcome</th>
                                         <th class="p-2 text-left">P&L</th>
-                                        <th class="p-2 text-left">Quality</th>
                                     </tr>
                                 </thead>
                                 <tbody id="reviewTradeTable" class="divide-y divide-gray-700">
