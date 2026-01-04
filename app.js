@@ -259,14 +259,29 @@ const IronLedger = {
             return;
         }
 
+        // Check if cache has old format (missing priceChange1h/priceChange24h)
+        // If so, invalidate cache and trigger fresh fetch
+        if (coins.length > 0 && (coins[0].priceChange1h === undefined || coins[0].priceChange24h === undefined)) {
+            console.log('⚠️ Old cache format detected - refreshing hot coins...');
+            this.state.hotCoins = [];
+            this.state.hotCoinsTimestamp = null;
+            this.saveState();
+            this.fetchHotCoins();
+            return;
+        }
+
         // Create button for each hot coin
         display.innerHTML = coins.map(coin => {
+            // Defensive: Use fallback values if properties missing
+            const change1h = coin.priceChange1h ?? 0;
+            const change24h = coin.priceChange24h ?? 0;
+
             // 1h change styling (primary indicator)
-            const change1hClass = coin.priceChange1h >= 0 ? 'text-green-400' : 'text-red-400';
-            const change1hIcon = coin.priceChange1h >= 0 ? '📈' : '📉';
+            const change1hClass = change1h >= 0 ? 'text-green-400' : 'text-red-400';
+            const change1hIcon = change1h >= 0 ? '📈' : '📉';
 
             // 24h change styling (secondary context)
-            const change24hClass = coin.priceChange24h >= 0 ? 'text-green-300' : 'text-red-300';
+            const change24hClass = change24h >= 0 ? 'text-green-300' : 'text-red-300';
 
             return `
                 <button type="button"
@@ -274,10 +289,10 @@ const IronLedger = {
                         class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded transition text-left">
                     <div class="text-sm font-bold text-white">${coin.symbol.replace('USDT', '')}</div>
                     <div class="text-xs ${change1hClass} font-semibold">
-                        1h: ${coin.priceChange1h >= 0 ? '+' : ''}${coin.priceChange1h.toFixed(2)}% ${change1hIcon}
+                        1h: ${change1h >= 0 ? '+' : ''}${change1h.toFixed(2)}% ${change1hIcon}
                     </div>
                     <div class="text-xs ${change24hClass} opacity-75">
-                        24h: ${coin.priceChange24h >= 0 ? '+' : ''}${coin.priceChange24h.toFixed(1)}%
+                        24h: ${change24h >= 0 ? '+' : ''}${change24h.toFixed(1)}%
                     </div>
                 </button>
             `;
