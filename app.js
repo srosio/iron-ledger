@@ -1185,6 +1185,11 @@ const IronLedger = {
             (data.priceChangePercent >= 0 ? '+' : '') + data.priceChangePercent.toFixed(2) + '%';
         priceChangeEl.className = 'font-mono font-semibold ' +
             (data.priceChangePercent >= 0 ? 'text-green-400' : 'text-red-400');
+
+        // Auto-scroll to the data display
+        setTimeout(() => {
+            display.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
     },
 
     /**
