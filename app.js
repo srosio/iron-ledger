@@ -52,7 +52,6 @@ const IronLedger = {
         this.startTimers();
         this.showScreen('trading');
         this.updateStatusBar();
-        this.updateSessionTime(); // Show time immediately
         this.fetchHotCoins(); // Auto-load hot coins on startup
         console.log('✅ IronLedger ready');
     },
@@ -373,7 +372,6 @@ const IronLedger = {
         // Update time and status every second
         setInterval(() => {
             this.updateStatusBar();
-            this.updateSessionTime();
             // Update trading screen if it's the current screen
             if (this.state.currentScreen === 'trading') {
                 this.updateTradingScreen();
@@ -592,28 +590,10 @@ const IronLedger = {
      */
 
     selectSession(session) {
+        // Save session selection (used for trade logging)
         this.state.selectedSession = session;
         this.saveState();
-
-        // Update UI
-        document.querySelectorAll('.session-btn').forEach(btn => {
-            if (btn.dataset.session === session) {
-                btn.classList.add('bg-blue-600');
-                btn.classList.remove('bg-gray-700');
-            } else {
-                btn.classList.remove('bg-blue-600');
-                btn.classList.add('bg-gray-700');
-            }
-        });
-
-        const sessionNames = {
-            'asian': '🌏 Asian (00:00-08:00 UTC)',
-            'london': '🇬🇧 London (08:00-16:00 UTC)',
-            'newyork': '🇺🇸 New York (13:00-21:00 UTC)'
-        };
-
-        document.getElementById('selectedSession').classList.remove('hidden');
-        document.getElementById('selectedSessionName').textContent = sessionNames[session];
+        // UI removed - session selection happens silently in background
     },
 
     updateTradingScreen() {
@@ -634,24 +614,7 @@ const IronLedger = {
             confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
 
-        // Restore selected session if exists
-        if (this.state.selectedSession) {
-            document.querySelectorAll('.session-btn').forEach(btn => {
-                if (btn.dataset.session === this.state.selectedSession) {
-                    btn.classList.add('bg-blue-600');
-                    btn.classList.remove('bg-gray-700');
-                }
-            });
-
-            const sessionNames = {
-                'asian': '🌏 Asian (00:00-08:00 UTC)',
-                'london': '🇬🇧 London (08:00-16:00 UTC)',
-                'newyork': '🇺🇸 New York (13:00-21:00 UTC)'
-            };
-
-            document.getElementById('selectedSession').classList.remove('hidden');
-            document.getElementById('selectedSessionName').textContent = sessionNames[this.state.selectedSession];
-        }
+        // Session is auto-selected in background - no UI updates needed
     },
 
     /**
