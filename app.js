@@ -33,7 +33,9 @@ const IronLedger = {
         // This data is INFORMATIONAL ONLY and does NOT affect trade enforcement
         marketContext: null,
         // OI history for tracking actual OI changes (per symbol)
-        oiHistory: {}
+        oiHistory: {},
+        // Saved symbols for quick access in dropdown
+        savedSymbols: []
     },
 
     /**
@@ -42,6 +44,7 @@ const IronLedger = {
     init() {
         console.log('🚀 IronLedger initializing...');
         this.loadState();
+        this.populateSavedSymbols();
         this.setupEventListeners();
         this.startTimers();
         this.showScreen('trading');
@@ -63,6 +66,7 @@ const IronLedger = {
                 this.state.marketContext = parsed.marketContext || null;
                 this.state.selectedSession = parsed.selectedSession || null;
                 this.state.oiHistory = parsed.oiHistory || {};
+                this.state.savedSymbols = parsed.savedSymbols || [];
                 console.log('📂 State loaded from LocalStorage');
             } catch (e) {
                 console.error('❌ Failed to load state:', e);
@@ -81,10 +85,62 @@ const IronLedger = {
             limits: this.state.limits,
             marketContext: this.state.marketContext,
             selectedSession: this.state.selectedSession,
-            oiHistory: this.state.oiHistory
+            oiHistory: this.state.oiHistory,
+            savedSymbols: this.state.savedSymbols
         };
         localStorage.setItem('ironledger_state', JSON.stringify(toSave));
         console.log('💾 State saved');
+    },
+
+    /**
+     * Populate saved symbols in datalist for autocomplete
+     */
+    populateSavedSymbols() {
+        const datalist = document.getElementById('symbolSuggestions');
+
+        // Get existing popular symbols (don't remove them)
+        const popularSymbols = [
+            'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
+            'ADAUSDT', 'DOGEUSDT', 'MATICUSDT', 'DOTUSDT', 'AVAXUSDT',
+            'LINKUSDT', 'UNIUSDT'
+        ];
+
+        // Clear existing options
+        datalist.innerHTML = '';
+
+        // Add popular symbols first
+        popularSymbols.forEach(symbol => {
+            const option = document.createElement('option');
+            option.value = symbol;
+            datalist.appendChild(option);
+        });
+
+        // Add user's saved symbols (avoid duplicates with popular)
+        this.state.savedSymbols.forEach(symbol => {
+            if (!popularSymbols.includes(symbol)) {
+                const option = document.createElement('option');
+                option.value = symbol;
+                datalist.appendChild(option);
+            }
+        });
+
+        console.log('📋 Symbol suggestions populated:',
+            popularSymbols.length + this.state.savedSymbols.filter(s => !popularSymbols.includes(s)).length);
+    },
+
+    /**
+     * Save symbol to saved list (called after successful fetch)
+     */
+    saveSymbol(symbol) {
+        if (!symbol) return;
+
+        // Add to saved symbols if not already there
+        if (!this.state.savedSymbols.includes(symbol)) {
+            this.state.savedSymbols.push(symbol);
+            this.saveState();
+            this.populateSavedSymbols();
+            console.log('💾 Symbol saved:', symbol);
+        }
     },
 
     /**
@@ -686,6 +742,9 @@ const IronLedger = {
             // Analyze market context and show recommendation
             this.analyzeMarketContext(marketContext);
 
+            // Save symbol for future quick access
+            this.saveSymbol(symbol);
+
             this.showMarketDataStatus(
                 `✓ Data fetched at ${new Date().toLocaleTimeString()}`,
                 'success'
@@ -1138,6 +1197,9 @@ const IronLedger = {
 
             // Display results
             this.displayQuickStats(stats);
+
+            // Save symbol for future quick access
+            this.saveSymbol(symbol);
 
             console.log('📊 Quick Stats:', stats);
 

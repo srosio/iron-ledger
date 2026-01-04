@@ -102,25 +102,35 @@
                 <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
                     <h3 class="text-lg font-bold mb-4 text-blue-400">Market Context</h3>
 
-                    <!-- Symbol Selector -->
+                    <!-- Symbol Input -->
                     <div class="mb-4">
-                        <label class="block text-sm font-semibold mb-2">Symbol (optional - auto-fetches data)</label>
-                        <select id="marketSymbol" onchange="IronLedger.fetchMarketData()"
-                                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2">
-                            <option value="">Manual Entry Only</option>
-                            <option value="BTCUSDT">BTCUSDT</option>
-                            <option value="ETHUSDT">ETHUSDT</option>
-                            <option value="BNBUSDT">BNBUSDT</option>
-                            <option value="SOLUSDT">SOLUSDT</option>
-                            <option value="XRPUSDT">XRPUSDT</option>
-                            <option value="ADAUSDT">ADAUSDT</option>
-                            <option value="DOGEUSDT">DOGEUSDT</option>
-                            <option value="MATICUSDT">MATICUSDT</option>
-                            <option value="DOTUSDT">DOTUSDT</option>
-                            <option value="AVAXUSDT">AVAXUSDT</option>
-                            <option value="LINKUSDT">LINKUSDT</option>
-                            <option value="UNIUSDT">UNIUSDT</option>
-                        </select>
+                        <label class="block text-sm font-semibold mb-2">Symbol (e.g., BTCUSDT)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="marketSymbol" list="symbolSuggestions"
+                                   placeholder="Type or select symbol..."
+                                   class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 uppercase"
+                                   oninput="this.value = this.value.toUpperCase()">
+                            <button type="button" onclick="IronLedger.fetchMarketData()"
+                                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition">
+                                Fetch Data
+                            </button>
+                        </div>
+                        <datalist id="symbolSuggestions">
+                            <!-- Popular symbols -->
+                            <option value="BTCUSDT">
+                            <option value="ETHUSDT">
+                            <option value="BNBUSDT">
+                            <option value="SOLUSDT">
+                            <option value="XRPUSDT">
+                            <option value="ADAUSDT">
+                            <option value="DOGEUSDT">
+                            <option value="MATICUSDT">
+                            <option value="DOTUSDT">
+                            <option value="AVAXUSDT">
+                            <option value="LINKUSDT">
+                            <option value="UNIUSDT">
+                            <!-- User's saved symbols will be added here dynamically -->
+                        </datalist>
                     </div>
 
                     <!-- Fetch Status -->
