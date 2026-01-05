@@ -541,13 +541,21 @@ const IronLedger = {
         const sessionStatus = this.getSessionStatus();
         const statusEl = document.getElementById('sessionStatus');
 
-        if (sessionStatus.allowed) {
-            statusEl.textContent = `✅ ${sessionStatus.session} Session Active`;
-            statusEl.className = 'text-xs font-semibold mt-1 text-green-400';
-        } else {
-            statusEl.textContent = '🚫 Outside Trading Hours';
-            statusEl.className = 'text-xs font-semibold mt-1 text-red-400';
-        }
+        // Display all three sessions with active/inactive status
+        const asiaClass = sessionStatus.sessions.asia ? 'text-green-400' : 'text-gray-500';
+        const londonClass = sessionStatus.sessions.london ? 'text-green-400' : 'text-gray-500';
+        const newYorkClass = sessionStatus.sessions.newYork ? 'text-green-400' : 'text-gray-500';
+
+        const asiaIcon = sessionStatus.sessions.asia ? '✅' : '⚪';
+        const londonIcon = sessionStatus.sessions.london ? '✅' : '⚪';
+        const newYorkIcon = sessionStatus.sessions.newYork ? '✅' : '⚪';
+
+        statusEl.innerHTML = `
+            <span class="${asiaClass}">${asiaIcon} Asia</span>
+            <span class="${londonClass}">${londonIcon} London</span>
+            <span class="${newYorkClass}">${newYorkIcon} NY</span>
+        `;
+        statusEl.className = 'text-xs font-semibold mt-1 flex gap-2 justify-end';
     },
 
     /**
@@ -559,21 +567,31 @@ const IronLedger = {
         const utcMinutes = now.getUTCMinutes();
         const totalMinutes = utcHours * 60 + utcMinutes;
 
+        // Asia: 00:00-04:00 UTC (0-240 minutes)
         // London: 08:00-12:00 UTC (480-720 minutes)
         // New York: 13:00-17:00 UTC (780-1020 minutes)
 
         let allowed = false;
         let session = null;
 
-        if (totalMinutes >= 480 && totalMinutes < 720) {
+        const sessions = {
+            asia: totalMinutes >= 0 && totalMinutes < 240,
+            london: totalMinutes >= 480 && totalMinutes < 720,
+            newYork: totalMinutes >= 780 && totalMinutes < 1020
+        };
+
+        if (sessions.asia) {
+            allowed = true;
+            session = 'Asia';
+        } else if (sessions.london) {
             allowed = true;
             session = 'London';
-        } else if (totalMinutes >= 780 && totalMinutes < 1020) {
+        } else if (sessions.newYork) {
             allowed = true;
             session = 'New York';
         }
 
-        return { allowed, session };
+        return { allowed, session, sessions };
     },
 
     /**
