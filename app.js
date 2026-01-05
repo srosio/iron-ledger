@@ -541,21 +541,23 @@ const IronLedger = {
         const sessionStatus = this.getSessionStatus();
         const statusEl = document.getElementById('sessionStatus');
 
-        // Display all three sessions with active/inactive status
-        const asiaClass = sessionStatus.sessions.asia ? 'text-green-400' : 'text-gray-500';
-        const londonClass = sessionStatus.sessions.london ? 'text-green-400' : 'text-gray-500';
-        const newYorkClass = sessionStatus.sessions.newYork ? 'text-green-400' : 'text-gray-500';
+        // Show only the active session with its time range
+        if (sessionStatus.allowed) {
+            let timeRange = '';
+            if (sessionStatus.session === 'Asia') {
+                timeRange = '00:00-04:00 UTC';
+            } else if (sessionStatus.session === 'London') {
+                timeRange = '08:00-12:00 UTC';
+            } else if (sessionStatus.session === 'New York') {
+                timeRange = '13:00-17:00 UTC';
+            }
 
-        const asiaIcon = sessionStatus.sessions.asia ? '✅' : '⚪';
-        const londonIcon = sessionStatus.sessions.london ? '✅' : '⚪';
-        const newYorkIcon = sessionStatus.sessions.newYork ? '✅' : '⚪';
-
-        statusEl.innerHTML = `
-            <span class="${asiaClass}">${asiaIcon} Asia</span>
-            <span class="${londonClass}">${londonIcon} London</span>
-            <span class="${newYorkClass}">${newYorkIcon} NY</span>
-        `;
-        statusEl.className = 'text-xs font-semibold mt-1 flex gap-2 justify-end';
+            statusEl.textContent = `✅ ${sessionStatus.session} (${timeRange})`;
+            statusEl.className = 'text-xs font-semibold mt-1 text-green-400';
+        } else {
+            statusEl.textContent = '🚫 Outside Trading Hours';
+            statusEl.className = 'text-xs font-semibold mt-1 text-red-400';
+        }
     },
 
     /**
