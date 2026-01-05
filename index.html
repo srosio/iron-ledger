@@ -74,6 +74,38 @@
                 <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
                     <h3 class="text-lg font-bold mb-4 text-blue-400">Market Context</h3>
 
+                    <!-- Fetch Status -->
+                    <div id="marketDataStatus" class="mb-3 text-sm hidden"></div>
+
+                    <!-- Live Data Display -->
+                    <div id="marketDataDisplay" class="hidden p-3 bg-gray-700 rounded border border-gray-600 mb-4">
+                        <p class="text-xs text-gray-400 mb-2">📊 Live Data</p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                            <div>
+                                <p class="text-gray-500 text-xs">Mark Price</p>
+                                <p id="marketMarkPrice" class="font-mono font-semibold text-blue-300">--</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-xs">Funding</p>
+                                <p id="marketFundingRate" class="font-mono font-semibold text-blue-300">--</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-xs">OI</p>
+                                <p id="marketOpenInterest" class="font-mono font-semibold text-blue-300">--</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-xs">24h Change</p>
+                                <p id="marketPriceChange" class="font-mono font-semibold">--</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Market Context Recommendation -->
+                    <div id="marketRecommendation" class="hidden mb-4 p-4 rounded border-2">
+                        <p class="font-bold text-lg mb-2" id="recommendationTitle">📊 Market Analysis</p>
+                        <div id="recommendationContent" class="text-sm space-y-1"></div>
+                    </div>
+
                     <!-- Symbol Input -->
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-2">Symbol <span class="text-gray-400 font-normal">(just type BTC, ETH, etc.)</span></label>
@@ -118,38 +150,6 @@
                             <p class="text-xs text-gray-500">Loading hot coins...</p>
                         </div>
                         <p class="text-xs text-gray-400 mt-1">Showing 1h momentum and 24h context</p>
-                    </div>
-
-                    <!-- Fetch Status -->
-                    <div id="marketDataStatus" class="mb-3 text-sm hidden"></div>
-
-                    <!-- Live Data Display -->
-                    <div id="marketDataDisplay" class="hidden p-3 bg-gray-700 rounded border border-gray-600">
-                        <p class="text-xs text-gray-400 mb-2">📊 Live Data</p>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                            <div>
-                                <p class="text-gray-500 text-xs">Mark Price</p>
-                                <p id="marketMarkPrice" class="font-mono font-semibold text-blue-300">--</p>
-                            </div>
-                            <div>
-                                <p class="text-gray-500 text-xs">Funding</p>
-                                <p id="marketFundingRate" class="font-mono font-semibold text-blue-300">--</p>
-                            </div>
-                            <div>
-                                <p class="text-gray-500 text-xs">OI</p>
-                                <p id="marketOpenInterest" class="font-mono font-semibold text-blue-300">--</p>
-                            </div>
-                            <div>
-                                <p class="text-gray-500 text-xs">24h Change</p>
-                                <p id="marketPriceChange" class="font-mono font-semibold">--</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Market Context Recommendation -->
-                    <div id="marketRecommendation" class="hidden mt-4 p-4 rounded border-2">
-                        <p class="font-bold text-lg mb-2" id="recommendationTitle">📊 Market Analysis</p>
-                        <div id="recommendationContent" class="text-sm space-y-1"></div>
                     </div>
                 </div>
 
