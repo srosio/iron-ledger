@@ -100,6 +100,12 @@
                         </div>
                     </div>
 
+                    <!-- Quick Stats Display -->
+                    <div id="quickStatsDisplay" class="hidden mb-4 p-3 bg-gray-700 rounded border border-gray-600">
+                        <p class="font-bold text-sm mb-2 text-blue-400">📈 Quick Stats</p>
+                        <div id="quickStatsContent" class="text-sm space-y-1"></div>
+                    </div>
+
                     <!-- Market Context Recommendation -->
                     <div id="marketRecommendation" class="hidden mb-4 p-4 rounded border-2">
                         <p class="font-bold text-lg mb-2" id="recommendationTitle">📊 Market Analysis</p>
@@ -205,19 +211,7 @@
 
                         <!-- Delta Confirmation -->
                         <div class="bg-gray-700 p-4 rounded">
-                            <div class="flex justify-between items-center mb-3">
-                                <h4 class="font-bold text-yellow-300">Delta Confirmation</h4>
-                                <button type="button" onclick="IronLedger.fetchQuickStats()"
-                                        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition">
-                                    📊 Quick Stats
-                                </button>
-                            </div>
-
-                            <!-- Quick Stats Display -->
-                            <div id="quickStatsDisplay" class="hidden mb-4 p-3 bg-gray-800 rounded border border-gray-600">
-                                <p class="font-bold text-sm mb-2 text-blue-400">📈 Quick Stats</p>
-                                <div id="quickStatsContent" class="text-sm space-y-1"></div>
-                            </div>
+                            <h4 class="font-bold mb-3 text-yellow-300">Delta Confirmation</h4>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>

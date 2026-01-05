@@ -1069,6 +1069,9 @@ const IronLedger = {
 
             console.log('📊 Market data fetched (informational only):', marketContext);
 
+            // Auto-fetch Quick Stats for the same symbol
+            this.fetchQuickStats(symbol);
+
         } catch (error) {
             console.error('❌ Market data fetch failed:', error);
             this.showMarketDataStatus(
@@ -1486,22 +1489,28 @@ const IronLedger = {
      * - Pullback % from swing high/low
      * - Volume vs 24h average
      * - Price zone (premium/discount/equilibrium)
+     * @param {string} symbolParam - Optional symbol parameter (if not provided, reads from input)
      */
-    async fetchQuickStats() {
-        let symbol = document.getElementById('marketSymbol').value.trim().toUpperCase();
+    async fetchQuickStats(symbolParam = null) {
+        let symbol = symbolParam;
 
+        // If no symbol provided, get from input field
         if (!symbol) {
-            alert('⚠️ Please enter a coin symbol first (e.g., BTC)');
-            return;
-        }
+            symbol = document.getElementById('marketSymbol').value.trim().toUpperCase();
 
-        // Auto-append USDT if not already present
-        if (!symbol.endsWith('USDT')) {
-            symbol = symbol + 'USDT';
-        }
+            if (!symbol) {
+                alert('⚠️ Please enter a coin symbol first (e.g., BTC)');
+                return;
+            }
 
-        // Update the input field with the full symbol
-        document.getElementById('marketSymbol').value = symbol;
+            // Auto-append USDT if not already present
+            if (!symbol.endsWith('USDT')) {
+                symbol = symbol + 'USDT';
+            }
+
+            // Update the input field with the full symbol
+            document.getElementById('marketSymbol').value = symbol;
+        }
 
         const display = document.getElementById('quickStatsDisplay');
         const content = document.getElementById('quickStatsContent');
