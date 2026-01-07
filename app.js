@@ -374,7 +374,7 @@ const IronLedger = {
                 badgeIcon = '⚪';
             }
 
-            const tvLink = `https://www.tradingview.com/chart/?symbol=BINANCE:${coin.symbol}`;
+            const tvLink = `https://www.tradingview.com/chart/?symbol=BINANCE:${coin.symbol}.P`;
 
             return `
                 <div class="relative bg-gray-700 rounded overflow-hidden">
@@ -1273,8 +1273,8 @@ const IronLedger = {
         // Show chart container
         chartContainer.classList.remove('hidden');
 
-        // Update TradingView link
-        const tvSymbol = `BINANCE:${symbol}`;
+        // Update TradingView link (format: BINANCE:BTCUSDT.P for perpetuals)
+        const tvSymbol = `BINANCE:${symbol}.P`;
         linkElement.href = `https://www.tradingview.com/chart/?symbol=${tvSymbol}`;
 
         // Clear previous widget

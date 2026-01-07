@@ -45,10 +45,10 @@
     </header>
 
     <!-- Main Container -->
-    <div class="container mx-auto px-4 py-6 max-w-7xl">
+    <div class="w-full px-2 py-4">
 
         <!-- Navigation Tabs -->
-        <nav class="mb-6 flex gap-2">
+        <nav class="mb-4 flex gap-2 px-2">
             <button onclick="IronLedger.showScreen('trading')"
                     class="tab-btn px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 transition text-sm"
                     data-screen="trading">
@@ -70,10 +70,10 @@
              UNIFIED TRADING SCREEN
              ======================================== -->
         <section id="screen-trading" class="screen-section">
-            <div class="space-y-6">
+            <div class="space-y-4">
 
                 <!-- Market Context -->
-                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                <div class="bg-gray-800 rounded-lg p-4 shadow-xl">
                     <h3 class="text-lg font-bold mb-4 text-blue-400">Market Context</h3>
 
                     <!-- Fetch Status -->
@@ -117,7 +117,7 @@
                                 Open in TradingView →
                             </a>
                         </div>
-                        <div id="tradingview_widget" style="height: 400px;"></div>
+                        <div id="tradingview_widget" style="height: 600px;"></div>
                     </div>
 
                     <!-- Technical Indicators -->
@@ -189,7 +189,7 @@
                 </div>
 
                 <!-- Trade Confirmation -->
-                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                <div class="bg-gray-800 rounded-lg p-4 shadow-xl">
                     <h3 class="text-lg font-bold mb-4 text-blue-400">Trade Confirmation</h3>
 
                     <!-- Pre-Check Warnings -->
@@ -289,7 +289,7 @@
              SCREEN 4: POST-TRADE LOG
              ======================================== -->
         <section id="screen-log" class="screen-section hidden">
-            <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+            <div class="bg-gray-800 rounded-lg p-4 shadow-xl">
                 <h2 class="text-2xl font-bold mb-4 text-blue-400">Post-Trade Log</h2>
                 <p class="text-sm text-gray-400 mb-6">Complete this log after trade exit. Trade is not complete until logged.</p>
 
@@ -374,8 +374,8 @@
              SCREEN 5: REVIEW DASHBOARD
              ======================================== -->
         <section id="screen-review" class="screen-section hidden">
-            <div class="space-y-6">
-                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+            <div class="space-y-4">
+                <div class="bg-gray-800 rounded-lg p-4 shadow-xl">
                     <h2 class="text-2xl font-bold mb-4 text-blue-400">Review Dashboard</h2>
 
                     <!-- Daily Stats -->
