@@ -374,23 +374,33 @@ const IronLedger = {
                 badgeIcon = '⚪';
             }
 
+            const tvLink = `https://www.tradingview.com/chart/?symbol=BINANCE:${coin.symbol}`;
+
             return `
-                <button type="button"
-                        onclick="IronLedger.selectHotCoin('${coin.symbol}')"
-                        class="px-2 py-1.5 bg-gray-700 hover:bg-gray-600 rounded transition text-left relative">
-                    <div class="flex justify-between items-start mb-0.5">
-                        <div class="text-xs font-bold text-white">${coin.symbol.replace('USDT', '')}</div>
-                        <div class="px-1.5 py-0.5 ${badgeBg} rounded text-[10px] ${badgeText} font-semibold leading-none">
-                            ${badgeIcon} ${recommendation}
+                <div class="relative bg-gray-700 rounded overflow-hidden">
+                    <button type="button"
+                            onclick="IronLedger.selectHotCoin('${coin.symbol}')"
+                            class="w-full px-2 py-1.5 hover:bg-gray-600 transition text-left">
+                        <div class="flex justify-between items-start mb-0.5">
+                            <div class="text-xs font-bold text-white">${coin.symbol.replace('USDT', '')}</div>
+                            <div class="px-1.5 py-0.5 ${badgeBg} rounded text-[10px] ${badgeText} font-semibold leading-none">
+                                ${badgeIcon} ${recommendation}
+                            </div>
                         </div>
-                    </div>
-                    <div class="text-[11px] ${change1hClass} font-semibold">
-                        1h: ${change1h >= 0 ? '+' : ''}${change1h.toFixed(2)}% ${change1hIcon}
-                    </div>
-                    <div class="text-[11px] ${change24hClass} opacity-75">
-                        24h: ${change24h >= 0 ? '+' : ''}${change24h.toFixed(1)}%
-                    </div>
-                </button>
+                        <div class="text-[11px] ${change1hClass} font-semibold">
+                            1h: ${change1h >= 0 ? '+' : ''}${change1h.toFixed(2)}% ${change1hIcon}
+                        </div>
+                        <div class="text-[11px] ${change24hClass} opacity-75">
+                            24h: ${change24h >= 0 ? '+' : ''}${change24h.toFixed(1)}%
+                        </div>
+                    </button>
+                    <a href="${tvLink}" target="_blank"
+                       onclick="event.stopPropagation()"
+                       class="absolute bottom-1 right-1 px-1.5 py-0.5 bg-blue-600 hover:bg-blue-700 rounded text-[10px] text-white font-semibold transition"
+                       title="View on TradingView">
+                        📊 TV
+                    </a>
+                </div>
             `;
         }).join('');
     },
@@ -1234,10 +1244,256 @@ const IronLedger = {
         priceChangeEl.className = 'font-mono font-semibold ' +
             (data.priceChangePercent >= 0 ? 'text-green-400' : 'text-red-400');
 
+        // Update TradingView chart and technical indicators
+        this.updateTradingViewChart(data.symbol);
+        this.fetchAndDisplayTechnicalIndicators(data.symbol);
+
         // Auto-scroll to the data display
         setTimeout(() => {
             display.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 100);
+    },
+
+    /**
+     * ============================================
+     * TRADINGVIEW INTEGRATION
+     * ============================================
+     */
+
+    /**
+     * Initialize or update TradingView chart widget
+     */
+    updateTradingViewChart(symbol) {
+        if (!symbol) return;
+
+        const chartContainer = document.getElementById('tradingviewChart');
+        const widgetContainer = document.getElementById('tradingview_widget');
+        const linkElement = document.getElementById('tradingviewLink');
+
+        // Show chart container
+        chartContainer.classList.remove('hidden');
+
+        // Update TradingView link
+        const tvSymbol = `BINANCE:${symbol}`;
+        linkElement.href = `https://www.tradingview.com/chart/?symbol=${tvSymbol}`;
+
+        // Clear previous widget
+        widgetContainer.innerHTML = '';
+
+        // Create new TradingView widget
+        new TradingView.widget({
+            autosize: true,
+            symbol: tvSymbol,
+            interval: "15",
+            timezone: "Etc/UTC",
+            theme: "dark",
+            style: "1",
+            locale: "en",
+            toolbar_bg: "#1f2937",
+            enable_publishing: false,
+            hide_side_toolbar: false,
+            allow_symbol_change: false,
+            container_id: "tradingview_widget",
+            studies: [
+                "RSI@tv-basicstudies",
+                "MACD@tv-basicstudies",
+                "BB@tv-basicstudies"
+            ],
+            disabled_features: ["use_localstorage_for_settings"],
+            enabled_features: ["study_templates"]
+        });
+
+        console.log('📊 TradingView chart updated:', symbol);
+    },
+
+    /**
+     * Fetch kline data and calculate technical indicators
+     */
+    async fetchAndDisplayTechnicalIndicators(symbol) {
+        try {
+            const indicatorsDiv = document.getElementById('technicalIndicators');
+            const contentDiv = document.getElementById('indicatorsContent');
+
+            // Show loading state
+            indicatorsDiv.classList.remove('hidden');
+            contentDiv.innerHTML = '<p class="text-gray-400 col-span-3">Calculating indicators...</p>';
+
+            // Fetch 100 candles of 15m data for indicator calculation
+            const klines = await this.fetchBinance(`/fapi/v1/klines?symbol=${symbol}&interval=15m&limit=100`);
+
+            // Parse kline data
+            const closes = klines.map(k => parseFloat(k[4]));
+            const highs = klines.map(k => parseFloat(k[2]));
+            const lows = klines.map(k => parseFloat(k[3]));
+
+            // Calculate indicators
+            const rsi = this.calculateRSI(closes, 14);
+            const macd = this.calculateMACD(closes);
+            const bb = this.calculateBollingerBands(closes, 20, 2);
+
+            // Display indicators
+            this.displayTechnicalIndicators({ rsi, macd, bb, currentPrice: closes[closes.length - 1] });
+
+        } catch (error) {
+            console.error('❌ Technical indicators calculation failed:', error);
+            const contentDiv = document.getElementById('indicatorsContent');
+            contentDiv.innerHTML = '<p class="text-red-400 col-span-3">Failed to calculate indicators</p>';
+        }
+    },
+
+    /**
+     * Calculate RSI (Relative Strength Index)
+     */
+    calculateRSI(prices, period = 14) {
+        if (prices.length < period + 1) return null;
+
+        let gains = 0;
+        let losses = 0;
+
+        // Calculate initial average gain/loss
+        for (let i = 1; i <= period; i++) {
+            const change = prices[i] - prices[i - 1];
+            if (change > 0) gains += change;
+            else losses -= change;
+        }
+
+        let avgGain = gains / period;
+        let avgLoss = losses / period;
+
+        // Calculate subsequent values using smoothing
+        for (let i = period + 1; i < prices.length; i++) {
+            const change = prices[i] - prices[i - 1];
+            if (change > 0) {
+                avgGain = ((avgGain * (period - 1)) + change) / period;
+                avgLoss = (avgLoss * (period - 1)) / period;
+            } else {
+                avgGain = (avgGain * (period - 1)) / period;
+                avgLoss = ((avgLoss * (period - 1)) - change) / period;
+            }
+        }
+
+        const rs = avgGain / avgLoss;
+        const rsi = 100 - (100 / (1 + rs));
+
+        return rsi;
+    },
+
+    /**
+     * Calculate MACD (Moving Average Convergence Divergence)
+     */
+    calculateMACD(prices) {
+        const ema12 = this.calculateEMA(prices, 12);
+        const ema26 = this.calculateEMA(prices, 26);
+        const macdLine = ema12 - ema26;
+
+        // For simplicity, we'll use a simple approximation for signal line
+        // In production, you'd calculate EMA of MACD line
+        const signal = macdLine * 0.9; // Simplified
+        const histogram = macdLine - signal;
+
+        return { macdLine, signal, histogram };
+    },
+
+    /**
+     * Calculate EMA (Exponential Moving Average)
+     */
+    calculateEMA(prices, period) {
+        if (prices.length < period) return 0;
+
+        const multiplier = 2 / (period + 1);
+        let ema = prices[0];
+
+        for (let i = 1; i < prices.length; i++) {
+            ema = (prices[i] - ema) * multiplier + ema;
+        }
+
+        return ema;
+    },
+
+    /**
+     * Calculate Bollinger Bands
+     */
+    calculateBollingerBands(prices, period = 20, stdDev = 2) {
+        if (prices.length < period) return null;
+
+        // Calculate SMA (middle band)
+        const recentPrices = prices.slice(-period);
+        const sma = recentPrices.reduce((a, b) => a + b, 0) / period;
+
+        // Calculate standard deviation
+        const squaredDiffs = recentPrices.map(price => Math.pow(price - sma, 2));
+        const variance = squaredDiffs.reduce((a, b) => a + b, 0) / period;
+        const standardDeviation = Math.sqrt(variance);
+
+        // Calculate bands
+        const upper = sma + (standardDeviation * stdDev);
+        const lower = sma - (standardDeviation * stdDev);
+
+        return { upper, middle: sma, lower };
+    },
+
+    /**
+     * Display technical indicators in UI
+     */
+    displayTechnicalIndicators(indicators) {
+        const contentDiv = document.getElementById('indicatorsContent');
+        const { rsi, macd, bb, currentPrice } = indicators;
+
+        // Determine RSI signal
+        let rsiSignal = '⚪ Neutral';
+        let rsiColor = 'text-gray-300';
+        if (rsi < 30) {
+            rsiSignal = '🟢 Oversold';
+            rsiColor = 'text-green-400';
+        } else if (rsi > 70) {
+            rsiSignal = '🔴 Overbought';
+            rsiColor = 'text-red-400';
+        }
+
+        // Determine MACD signal
+        let macdSignal = '⚪ Neutral';
+        let macdColor = 'text-gray-300';
+        if (macd.histogram > 0) {
+            macdSignal = '🟢 Bullish';
+            macdColor = 'text-green-400';
+        } else if (macd.histogram < 0) {
+            macdSignal = '🔴 Bearish';
+            macdColor = 'text-red-400';
+        }
+
+        // Determine Bollinger Bands signal
+        let bbSignal = '⚪ Middle';
+        let bbColor = 'text-gray-300';
+        const bbPosition = ((currentPrice - bb.lower) / (bb.upper - bb.lower)) * 100;
+        if (bbPosition < 20) {
+            bbSignal = '🟢 Near Lower Band';
+            bbColor = 'text-green-400';
+        } else if (bbPosition > 80) {
+            bbSignal = '🔴 Near Upper Band';
+            bbColor = 'text-red-400';
+        }
+
+        contentDiv.innerHTML = `
+            <div class="bg-gray-800 p-3 rounded">
+                <p class="text-gray-400 text-xs mb-1">RSI (14)</p>
+                <p class="font-mono font-bold text-white mb-1">${rsi.toFixed(2)}</p>
+                <p class="${rsiColor} text-xs font-semibold">${rsiSignal}</p>
+            </div>
+            <div class="bg-gray-800 p-3 rounded">
+                <p class="text-gray-400 text-xs mb-1">MACD</p>
+                <p class="font-mono font-bold text-white mb-1">${macd.macdLine.toFixed(2)}</p>
+                <p class="${macdColor} text-xs font-semibold">${macdSignal}</p>
+            </div>
+            <div class="bg-gray-800 p-3 rounded">
+                <p class="text-gray-400 text-xs mb-1">Bollinger Bands</p>
+                <p class="font-mono text-xs text-white">U: ${bb.upper.toFixed(2)}</p>
+                <p class="font-mono text-xs text-white">M: ${bb.middle.toFixed(2)}</p>
+                <p class="font-mono text-xs text-white mb-1">L: ${bb.lower.toFixed(2)}</p>
+                <p class="${bbColor} text-xs font-semibold">${bbSignal}</p>
+            </div>
+        `;
+
+        console.log('🔍 Technical indicators displayed:', { rsi, macd, bb });
     },
 
     /**

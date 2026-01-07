@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IronLedger - Trading Discipline Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- TradingView Widget Script -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <style>
         /* Custom scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -104,6 +106,24 @@
                     <div id="quickStatsDisplay" class="hidden mb-4 p-3 bg-gray-700 rounded border border-gray-600">
                         <p class="font-bold text-sm mb-2 text-blue-400">📈 Quick Stats</p>
                         <div id="quickStatsContent" class="text-sm space-y-1"></div>
+                    </div>
+
+                    <!-- TradingView Chart -->
+                    <div id="tradingviewChart" class="hidden mb-4 bg-gray-700 rounded border border-gray-600 overflow-hidden">
+                        <div class="p-3 flex justify-between items-center border-b border-gray-600">
+                            <p class="font-bold text-sm text-blue-400">📊 TradingView Chart</p>
+                            <a id="tradingviewLink" href="#" target="_blank"
+                               class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition">
+                                Open in TradingView →
+                            </a>
+                        </div>
+                        <div id="tradingview_widget" style="height: 400px;"></div>
+                    </div>
+
+                    <!-- Technical Indicators -->
+                    <div id="technicalIndicators" class="hidden mb-4 p-3 bg-gray-700 rounded border border-gray-600">
+                        <p class="font-bold text-sm mb-2 text-blue-400">🔍 Technical Indicators</p>
+                        <div id="indicatorsContent" class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm"></div>
                     </div>
 
                     <!-- Market Context Recommendation -->
