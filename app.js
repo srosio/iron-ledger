@@ -152,9 +152,10 @@ const IronLedger = {
     },
 
     /**
-     * Fetch hot coins from Binance (top volume pairs)
+     * Fetch top gainers from Binance (sorted by 24h price change)
      * Shows 1h and 24h price changes to identify current momentum
      * Also fetches market context and displays LONG/SHORT/WAIT recommendations
+     * Filters coins with minimum $10M volume to ensure liquidity
      * Caches results for 30 minutes to avoid excessive API calls
      *
      * @param {boolean} forceRefresh - If true, bypasses cache and fetches fresh data
@@ -171,34 +172,38 @@ const IronLedger = {
             this.state.hotCoinsTimestamp &&
             (now - this.state.hotCoinsTimestamp) < CACHE_DURATION) {
             // Use cached data
-            console.log('🔥 Using cached hot coins');
+            console.log('🔥 Using cached top gainers');
             this.displayHotCoins(this.state.hotCoins);
             return;
         }
 
         // Fetch fresh data
-        console.log(forceRefresh ? '🔄 Force refreshing hot coins...' : '🔥 Fetching hot coins...');
-        display.innerHTML = '<p class="text-xs text-gray-500">Loading hot coins...</p>';
+        console.log(forceRefresh ? '🔄 Force refreshing top gainers...' : '🔥 Fetching top gainers...');
+        display.innerHTML = '<p class="text-xs text-gray-500">Loading top gainers...</p>';
 
         try {
             // Fetch all 24hr ticker data (FUTURES only - /fapi/)
             const tickers = await this.fetchBinance('/fapi/v1/ticker/24hr');
 
             // Filter for USDT perpetual futures pairs only (exclude BUSD, spot, quarterly futures)
-            // Sort by quote volume (volume in USDT) descending
+            // Sort by price change (gainers) descending, with minimum volume filter
             const topPairs = tickers
-                .filter(t => t.symbol.endsWith('USDT') && !t.symbol.includes('_'))
+                .filter(t =>
+                    t.symbol.endsWith('USDT') &&
+                    !t.symbol.includes('_') &&
+                    parseFloat(t.quoteVolume) > 10_000_000 // Min $10M volume to filter out low liquidity
+                )
                 .map(t => ({
                     symbol: t.symbol,
                     volume: parseFloat(t.quoteVolume),
                     priceChange24h: parseFloat(t.priceChangePercent),
                     lastPrice: parseFloat(t.lastPrice)
                 }))
-                .sort((a, b) => b.volume - a.volume)
-                .slice(0, 15); // Top 15 by volume
+                .sort((a, b) => b.priceChange24h - a.priceChange24h) // Sort by gainers
+                .slice(0, 30); // Top 30 gainers
 
             // Fetch 1h price change + market context for each coin
-            console.log('🔥 Fetching 1h data and market context for top 15 coins...');
+            console.log('🔥 Fetching 1h data and market context for top 30 gainers...');
 
             const coinsWithAnalysis = await Promise.all(
                 topPairs.map(async (coin) => {
@@ -275,11 +280,11 @@ const IronLedger = {
             // Display
             this.displayHotCoins(coinsWithAnalysis);
 
-            console.log('🔥 Hot coins with recommendations fetched:', coinsWithAnalysis.length);
+            console.log('🔥 Top gainers with recommendations fetched:', coinsWithAnalysis.length);
 
         } catch (error) {
-            console.error('❌ Hot coins fetch failed:', error);
-            display.innerHTML = '<p class="text-xs text-red-400">Failed to load hot coins</p>';
+            console.error('❌ Top gainers fetch failed:', error);
+            display.innerHTML = '<p class="text-xs text-red-400">Failed to load top gainers</p>';
         }
     },
 
@@ -530,26 +535,37 @@ const IronLedger = {
     updateStatusBar() {
         const now = new Date();
 
-        // UTC time
-        const utcTime = now.toISOString().substr(11, 8) + ' UTC';
-        document.getElementById('currentTime').textContent = utcTime;
+        // Local time (primary display)
+        const localTime = now.toLocaleTimeString();
+        document.getElementById('currentTime').textContent = localTime;
 
-        // Local time
-        const localTime = now.toLocaleTimeString() + ' (Local)';
-        document.getElementById('currentLocalTime').textContent = localTime;
+        // UTC time (secondary)
+        const utcTime = now.toISOString().substr(11, 8) + ' UTC';
+        document.getElementById('currentLocalTime').textContent = utcTime;
 
         const sessionStatus = this.getSessionStatus();
         const statusEl = document.getElementById('sessionStatus');
 
-        // Show only the active session with its time range
+        // Show only the active session with its time range in local time
         if (sessionStatus.allowed) {
             let timeRange = '';
+
+            // Convert UTC session times to local time
             if (sessionStatus.session === 'Asia') {
-                timeRange = '00:00-04:00 UTC';
+                // 00:00-04:00 UTC
+                const start = this.utcToLocal(0, 0);
+                const end = this.utcToLocal(4, 0);
+                timeRange = `${start}-${end}`;
             } else if (sessionStatus.session === 'London') {
-                timeRange = '08:00-12:00 UTC';
+                // 08:00-12:00 UTC
+                const start = this.utcToLocal(8, 0);
+                const end = this.utcToLocal(12, 0);
+                timeRange = `${start}-${end}`;
             } else if (sessionStatus.session === 'New York') {
-                timeRange = '13:00-17:00 UTC';
+                // 13:00-17:00 UTC
+                const start = this.utcToLocal(13, 0);
+                const end = this.utcToLocal(17, 0);
+                timeRange = `${start}-${end}`;
             }
 
             statusEl.textContent = `✅ ${sessionStatus.session} (${timeRange})`;
@@ -558,6 +574,15 @@ const IronLedger = {
             statusEl.textContent = '🚫 Outside Trading Hours';
             statusEl.className = 'text-xs font-semibold mt-1 text-red-400';
         }
+    },
+
+    /**
+     * Convert UTC time to local time format
+     */
+    utcToLocal(utcHours, utcMinutes) {
+        const date = new Date();
+        date.setUTCHours(utcHours, utcMinutes, 0, 0);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
     },
 
     /**

@@ -146,16 +146,16 @@
                     <!-- Hot Coins -->
                     <div class="mb-4">
                         <div class="flex justify-between items-center mb-2">
-                            <label class="text-sm font-semibold text-orange-400">🔥 Hot Coins (Futures - Top Volume)</label>
+                            <label class="text-sm font-semibold text-orange-400">🔥 Top 30 Gainers (24h)</label>
                             <button type="button" onclick="IronLedger.fetchHotCoins(true)"
                                     class="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white text-xs rounded transition">
                                 🔄 Refresh
                             </button>
                         </div>
-                        <div id="hotCoinsDisplay" class="grid grid-cols-2 gap-2">
-                            <p class="text-xs text-gray-500">Loading hot coins...</p>
+                        <div id="hotCoinsDisplay" class="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto">
+                            <p class="text-xs text-gray-500">Loading top gainers...</p>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1">Showing 1h momentum and 24h context</p>
+                        <p class="text-xs text-gray-400 mt-1">Sorted by highest 24h gain • Min $10M volume</p>
                     </div>
                 </div>
 
