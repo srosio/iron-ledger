@@ -108,7 +108,16 @@
 
                     <!-- Market Context Recommendation -->
                     <div id="marketRecommendation" class="hidden mb-4 p-4 rounded border-2">
-                        <p class="font-bold text-lg mb-2" id="recommendationTitle">📊 Market Analysis</p>
+                        <div class="flex justify-between items-start mb-2">
+                            <p class="font-bold text-lg" id="recommendationTitle">📊 Market Analysis</p>
+                            <button type="button" onclick="IronLedger.shareToTelegram()"
+                                    class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.84 8.673c-.139.645-.502.804-1.016.501l-2.806-2.069-1.353 1.302c-.15.15-.275.275-.563.275l.201-2.851 5.188-4.686c.226-.201-.049-.312-.351-.111l-6.406 4.03-2.76-.863c-.6-.188-.612-.6.126-.889l10.79-4.156c.501-.188.938.111.775.889z"/>
+                                </svg>
+                                Share
+                            </button>
+                        </div>
                         <div id="recommendationContent" class="text-sm space-y-1"></div>
                     </div>
 
