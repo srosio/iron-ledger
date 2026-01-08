@@ -86,13 +86,13 @@
 
                 <!-- Primary Assets Dashboard (BTC, ETH, GOLD) -->
                 <div class="bg-gray-800 rounded-lg p-4 shadow-xl">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-blue-400">📊 Primary Assets</h3>
-                        <span class="text-xs text-gray-400">Auto-updated on load</span>
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-sm font-bold text-blue-400">📊 Primary Assets</h3>
+                        <span class="text-xs text-gray-400">Auto-updated</span>
                     </div>
-                    <div id="primaryAssetsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div id="primaryAssetsGrid" class="grid grid-cols-3 gap-2">
                         <!-- BTC, ETH, GOLD cards will be inserted here -->
-                        <p class="text-xs text-gray-500 col-span-3">Loading BTC, ETH, GOLD...</p>
+                        <p class="text-xs text-gray-500 col-span-3">Loading...</p>
                     </div>
                 </div>
 
@@ -490,6 +490,37 @@
             <p class="text-xs mt-1">This system enforces rules. It does not generate signals or automate execution.</p>
         </div>
     </footer>
+
+    <!-- Primary Asset Details Modal -->
+    <div id="assetModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="IronLedger.closeAssetModal(event)">
+        <div class="bg-gray-800 rounded-lg w-full max-w-4xl max-h-screen overflow-y-auto" onclick="event.stopPropagation()">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                <h3 id="modalAssetName" class="text-xl font-bold text-blue-400">Asset Details</h3>
+                <button onclick="IronLedger.closeAssetModal()" class="text-gray-400 hover:text-white text-2xl">×</button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-4">
+                <!-- TradingView Chart -->
+                <div class="mb-4 bg-gray-700 rounded border border-gray-600 overflow-hidden">
+                    <div class="p-3 flex justify-between items-center border-b border-gray-600">
+                        <p class="font-bold text-sm text-blue-400">📊 TradingView Chart</p>
+                        <a id="modalTradingViewLink" href="#" target="_blank"
+                           class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition">
+                            Open in TradingView →
+                        </a>
+                    </div>
+                    <div id="modal_tradingview_widget" style="height: 500px;"></div>
+                </div>
+
+                <!-- Asset Details Grid -->
+                <div id="modalAssetDetails" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Details will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Core Application Logic -->
     <script type="module" src="app.js"></script>

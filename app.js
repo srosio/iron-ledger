@@ -590,7 +590,7 @@ const IronLedger = {
     },
 
     /**
-     * Display primary assets dashboard with all three assets
+     * Display primary assets dashboard with all three assets (compact style like gainer coins)
      */
     displayPrimaryAssetsDashboard(assets) {
         const container = document.getElementById('primaryAssetsGrid');
@@ -600,81 +600,196 @@ const IronLedger = {
             return;
         }
 
+        // Store assets data for modal access
+        this.primaryAssetsData = assets;
+
         container.innerHTML = assets.map(asset => {
             const icons = { 'LONG': '🟢', 'SHORT': '🔴', 'WAIT': '⚪' };
             const icon = icons[asset.recommendation.recommendation] || '📊';
 
             return `
-                <div class="bg-gray-700 rounded border border-gray-600 p-3 hover:border-blue-500 cursor-pointer transition"
-                     onclick="IronLedger.selectPrimaryAsset('${asset.symbol}')">
+                <div class="bg-gray-700 rounded border border-gray-600 p-2 hover:border-blue-500 cursor-pointer transition"
+                     onclick="IronLedger.openAssetModal('${asset.symbol}')">
                     <!-- Header -->
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">${asset.icon}</span>
-                            <span class="font-bold text-blue-400">${asset.name}</span>
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="flex items-center gap-1">
+                            <span class="text-sm">${asset.icon}</span>
+                            <span class="font-bold text-xs text-blue-400">${asset.name}</span>
                         </div>
                         <span class="text-xs ${asset.priceChangePercent >= 0 ? 'text-green-400' : 'text-red-400'}">
-                            ${asset.priceChangePercent >= 0 ? '+' : ''}${asset.priceChangePercent.toFixed(2)}%
+                            ${asset.priceChangePercent >= 0 ? '+' : ''}${asset.priceChangePercent.toFixed(1)}%
                         </span>
                     </div>
 
                     <!-- Price -->
-                    <div class="mb-3">
-                        <p class="text-xl font-mono font-bold text-white">
-                            $${asset.markPrice.toFixed(2)}
-                        </p>
-                    </div>
+                    <p class="text-sm font-mono font-bold text-white mb-1">
+                        $${asset.markPrice.toFixed(2)}
+                    </p>
 
                     <!-- Recommendation Badge -->
-                    <div class="mb-3 p-2 ${asset.recommendation.bgColor} rounded border border-gray-600">
-                        <p class="font-bold text-xs text-center">
-                            ${icon} ${asset.recommendation.recommendation} (${asset.recommendation.confidence})
+                    <div class="p-1 ${asset.recommendation.bgColor} rounded text-center mb-1">
+                        <p class="font-bold text-xs">
+                            ${icon} ${asset.recommendation.recommendation}
                         </p>
                     </div>
 
-                    <!-- Market Data -->
-                    <div class="grid grid-cols-2 gap-2 text-xs mb-2">
-                        <div>
-                            <p class="text-gray-400">Funding</p>
-                            <p class="font-mono font-semibold text-blue-300">
-                                ${asset.fundingRate.toFixed(4)}%
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-gray-400">OI</p>
-                            <p class="font-mono font-semibold text-blue-300">
-                                ${(asset.openInterest / 1000000).toFixed(1)}M
-                            </p>
-                        </div>
+                    <!-- Quick Stats -->
+                    <div class="text-xs text-gray-400">
+                        <p>Fund: ${asset.fundingRate.toFixed(3)}%</p>
+                        <p>OI: ${(asset.openInterest / 1000000).toFixed(1)}M</p>
                     </div>
-
-                    <!-- Reasoning -->
-                    <div class="text-xs text-gray-300 space-y-1">
-                        ${asset.recommendation.reasoning.map(line =>
-                            `<p>${line}</p>`
-                        ).join('')}
-                    </div>
-
-                    <!-- Click to view chart -->
-                    <p class="text-xs text-gray-500 mt-2 text-center">
-                        Click to view chart
-                    </p>
                 </div>
             `;
         }).join('');
     },
 
     /**
-     * Select a primary asset and show its TradingView chart
+     * Open asset modal and display full details with TradingView chart
      */
-    selectPrimaryAsset(symbol) {
-        console.log('📊 Selected primary asset:', symbol);
+    openAssetModal(symbol) {
+        console.log('📊 Opening modal for:', symbol);
 
-        // Set the symbol in input field
-        document.getElementById('marketSymbol').value = symbol;
+        // Find the asset data
+        const asset = this.primaryAssetsData?.find(a => a.symbol === symbol);
+        if (!asset) {
+            console.warn('Asset data not found:', symbol);
+            return;
+        }
 
-        // Fetch full market data (this will display chart)
-        this.fetchMarketData();
+        // Update modal title
+        document.getElementById('modalAssetName').textContent = `${asset.icon} ${asset.name} - ${asset.symbol}`;
+
+        // Update TradingView link
+        const tvSymbol = `BINANCE:${symbol}.P`;
+        document.getElementById('modalTradingViewLink').href = `tradingview://chart?symbol=${tvSymbol}`;
+
+        // Populate asset details
+        const icons = { 'LONG': '🟢', 'SHORT': '🔴', 'WAIT': '⚪' };
+        const icon = icons[asset.recommendation.recommendation] || '📊';
+
+        document.getElementById('modalAssetDetails').innerHTML = `
+            <!-- Recommendation Card -->
+            <div class="bg-gray-700 rounded p-4 border border-gray-600">
+                <h4 class="font-bold text-sm text-blue-400 mb-3">Recommendation</h4>
+                <div class="p-3 ${asset.recommendation.bgColor} rounded border border-gray-600 mb-3">
+                    <p class="font-bold text-center text-lg">
+                        ${icon} ${asset.recommendation.recommendation}
+                    </p>
+                    <p class="text-center text-sm text-gray-300">
+                        ${asset.recommendation.confidence} Confidence
+                    </p>
+                </div>
+                <div class="text-sm text-gray-300 space-y-2">
+                    ${asset.recommendation.reasoning.map(line =>
+                        `<p>${line}</p>`
+                    ).join('')}
+                </div>
+            </div>
+
+            <!-- Market Data Card -->
+            <div class="bg-gray-700 rounded p-4 border border-gray-600">
+                <h4 class="font-bold text-sm text-blue-400 mb-3">Market Data</h4>
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-xs text-gray-400">Mark Price</p>
+                        <p class="text-xl font-mono font-bold text-white">$${asset.markPrice.toFixed(2)}</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <p class="text-xs text-gray-400">24h Change</p>
+                            <p class="font-mono font-semibold ${asset.priceChangePercent >= 0 ? 'text-green-400' : 'text-red-400'}">
+                                ${asset.priceChangePercent >= 0 ? '+' : ''}${asset.priceChangePercent.toFixed(2)}%
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400">Funding Rate</p>
+                            <p class="font-mono font-semibold text-blue-300">
+                                ${asset.fundingRate.toFixed(4)}%
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400">Open Interest</p>
+                            <p class="font-mono font-semibold text-blue-300">
+                                ${(asset.openInterest / 1000000).toFixed(2)}M
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400">24h Volume</p>
+                            <p class="font-mono font-semibold text-blue-300">
+                                ${(asset.volume24h / 1000000).toFixed(2)}M
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400">OI Trend</p>
+                            <p class="font-mono font-semibold text-yellow-300">
+                                ${asset.oiTrend}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400">Volume Trend</p>
+                            <p class="font-mono font-semibold text-yellow-300">
+                                ${asset.volumeTrend}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Create TradingView chart in modal
+        const modalWidgetContainer = document.getElementById('modal_tradingview_widget');
+        modalWidgetContainer.innerHTML = '';
+
+        new TradingView.widget({
+            autosize: true,
+            symbol: tvSymbol,
+            interval: "15",
+            timezone: "Etc/UTC",
+            theme: "dark",
+            style: "1",
+            locale: "en",
+            toolbar_bg: "#1f2937",
+            enable_publishing: false,
+            hide_side_toolbar: false,
+            allow_symbol_change: false,
+            container_id: "modal_tradingview_widget",
+            studies: [
+                "STD;Session%1Volume%1Profile",
+                "PUB;4KMVqGQPUfFh",
+                "PUB;f55e3c6dc7a147f79f48c6c8a88be0c2",
+                "PUB;7662c6301a7c4725a69fe60142e7f0f9",
+                "PUB;b740a8f9090c443c960bd45f2f527cd5"
+            ],
+            disabled_features: [
+                "use_localstorage_for_settings",
+                "header_symbol_search",
+                "symbol_search_hot_key"
+            ],
+            enabled_features: [
+                "study_templates",
+                "side_toolbar_in_fullscreen_mode",
+                "header_in_fullscreen_mode",
+                "use_last_visible_bar_value_mode",
+                "tick_resolution"
+            ]
+        });
+
+        // Show modal
+        document.getElementById('assetModal').classList.remove('hidden');
+        console.log('✅ Modal opened with chart for', symbol);
+    },
+
+    /**
+     * Close asset modal
+     */
+    closeAssetModal(event) {
+        // If event is provided and it's not the backdrop click, don't close
+        if (event && event.target.id !== 'assetModal') {
+            return;
+        }
+
+        document.getElementById('assetModal').classList.add('hidden');
+        console.log('📊 Modal closed');
     },
 
     /**
