@@ -345,6 +345,9 @@ const IronLedger = {
             return;
         }
 
+        // Store coins data for modal access
+        this.hotCoinsData = coins;
+
         // Create button for each hot coin
         display.innerHTML = coins.map(coin => {
             // Defensive: Use fallback values if properties missing
@@ -380,7 +383,7 @@ const IronLedger = {
             return `
                 <div class="relative bg-gray-700 rounded overflow-hidden">
                     <button type="button"
-                            onclick="IronLedger.selectHotCoin('${coin.symbol}')"
+                            onclick="IronLedger.openHotCoinModal('${coin.symbol}')"
                             class="w-full px-2 py-1.5 hover:bg-gray-600 transition text-left">
                         <div class="flex justify-between items-start mb-0.5">
                             <div class="text-xs font-bold text-white">${coin.symbol.replace('USDT', '')}</div>
@@ -407,16 +410,192 @@ const IronLedger = {
     },
 
     /**
-     * Select a hot coin and auto-fetch its data
+     * Open hot coin modal with full details and TradingView chart
      */
-    selectHotCoin(symbol) {
-        // Set the symbol in input field
-        document.getElementById('marketSymbol').value = symbol;
+    async openHotCoinModal(symbol) {
+        console.log('🔥 Opening modal for hot coin:', symbol);
 
-        // Auto-fetch market data
-        this.fetchMarketData();
+        // Find the coin data from hot coins list
+        const hotCoin = this.hotCoinsData?.find(c => c.symbol === symbol);
 
-        console.log('🔥 Hot coin selected:', symbol);
+        // Show loading state in modal
+        document.getElementById('modalAssetName').textContent = `${symbol.replace('USDT', '')} - Loading...`;
+        document.getElementById('assetModal').classList.remove('hidden');
+        document.getElementById('modalAssetDetails').innerHTML = '<p class="text-gray-400 col-span-2 text-center">Loading data...</p>';
+
+        try {
+            // Fetch full market data for this coin
+            const [premiumData, openInterestData, statsData] = await Promise.all([
+                this.fetchBinance(`/fapi/v1/premiumIndex?symbol=${symbol}`),
+                this.fetchBinance(`/fapi/v1/openInterest?symbol=${symbol}`),
+                this.fetchBinance(`/fapi/v1/ticker/24hr?symbol=${symbol}`)
+            ]);
+
+            // Extract market data
+            const markPrice = parseFloat(premiumData.markPrice);
+            const fundingRate = parseFloat(premiumData.lastFundingRate) * 100;
+            const openInterest = parseFloat(openInterestData.openInterest);
+            const volume24h = parseFloat(statsData.volume);
+            const priceChangePercent = parseFloat(statsData.priceChangePercent);
+
+            // Calculate OI trend
+            let oiTrend = 'flat';
+            const previousOI = this.state.oiHistory[symbol];
+            if (previousOI && previousOI.value) {
+                const oiChange = ((openInterest - previousOI.value) / previousOI.value) * 100;
+                if (oiChange > 2) oiTrend = 'rising';
+                else if (oiChange < -2) oiTrend = 'falling';
+            }
+            this.state.oiHistory[symbol] = { value: openInterest, timestamp: Date.now() };
+
+            // Calculate volume trend
+            const volumeToOI = volume24h / openInterest;
+            const priceChange = Math.abs(priceChangePercent);
+            const volumeTrend = (priceChange > 3 || volumeToOI > 15) ? 'above' : 'below';
+
+            // Get recommendation
+            const recommendation = this.getRecommendationForAsset(
+                symbol,
+                fundingRate,
+                oiTrend,
+                volumeTrend
+            );
+
+            // Update modal title
+            document.getElementById('modalAssetName').textContent = `🔥 ${symbol.replace('USDT', '')} - ${symbol}`;
+
+            // Update TradingView link
+            const tvSymbol = `BINANCE:${symbol}.P`;
+            document.getElementById('modalTradingViewLink').href = `tradingview://chart?symbol=${tvSymbol}`;
+
+            // Populate asset details
+            const icons = { 'LONG': '🟢', 'SHORT': '🔴', 'WAIT': '⚪' };
+            const icon = icons[recommendation.recommendation] || '📊';
+
+            document.getElementById('modalAssetDetails').innerHTML = `
+                <!-- Recommendation Card -->
+                <div class="bg-gray-700 rounded p-4 border border-gray-600">
+                    <h4 class="font-bold text-sm text-blue-400 mb-3">Recommendation</h4>
+                    <div class="p-3 ${recommendation.bgColor} rounded border border-gray-600 mb-3">
+                        <p class="font-bold text-center text-lg">
+                            ${icon} ${recommendation.recommendation}
+                        </p>
+                        <p class="text-center text-sm text-gray-300">
+                            ${recommendation.confidence} Confidence
+                        </p>
+                    </div>
+                    <div class="text-sm text-gray-300 space-y-2">
+                        ${recommendation.reasoning.map(line =>
+                            `<p>${line}</p>`
+                        ).join('')}
+                    </div>
+                </div>
+
+                <!-- Market Data Card -->
+                <div class="bg-gray-700 rounded p-4 border border-gray-600">
+                    <h4 class="font-bold text-sm text-blue-400 mb-3">Market Data</h4>
+                    <div class="space-y-3">
+                        <div>
+                            <p class="text-xs text-gray-400">Mark Price</p>
+                            <p class="text-xl font-mono font-bold text-white">$${markPrice.toFixed(2)}</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <p class="text-xs text-gray-400">1h Change</p>
+                                <p class="font-mono font-semibold ${hotCoin?.priceChange1h >= 0 ? 'text-green-400' : 'text-red-400'}">
+                                    ${hotCoin?.priceChange1h >= 0 ? '+' : ''}${hotCoin?.priceChange1h?.toFixed(2) || 'N/A'}%
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400">24h Change</p>
+                                <p class="font-mono font-semibold ${priceChangePercent >= 0 ? 'text-green-400' : 'text-red-400'}">
+                                    ${priceChangePercent >= 0 ? '+' : ''}${priceChangePercent.toFixed(2)}%
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400">Funding Rate</p>
+                                <p class="font-mono font-semibold text-blue-300">
+                                    ${fundingRate.toFixed(4)}%
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400">Open Interest</p>
+                                <p class="font-mono font-semibold text-blue-300">
+                                    ${(openInterest / 1000000).toFixed(2)}M
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400">24h Volume</p>
+                                <p class="font-mono font-semibold text-blue-300">
+                                    ${(volume24h / 1000000).toFixed(2)}M
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400">OI Trend</p>
+                                <p class="font-mono font-semibold text-yellow-300">
+                                    ${oiTrend}
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400">Volume Trend</p>
+                                <p class="font-mono font-semibold text-yellow-300">
+                                    ${volumeTrend}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Create TradingView chart in modal
+            const modalWidgetContainer = document.getElementById('modal_tradingview_widget');
+            modalWidgetContainer.innerHTML = '';
+
+            new TradingView.widget({
+                autosize: true,
+                symbol: tvSymbol,
+                interval: "15",
+                timezone: "Etc/UTC",
+                theme: "dark",
+                style: "1",
+                locale: "en",
+                toolbar_bg: "#1f2937",
+                enable_publishing: false,
+                hide_side_toolbar: false,
+                allow_symbol_change: false,
+                container_id: "modal_tradingview_widget",
+                studies: [
+                    "STD;Session%1Volume%1Profile",
+                    "PUB;4KMVqGQPUfFh",
+                    "PUB;f55e3c6dc7a147f79f48c6c8a88be0c2",
+                    "PUB;7662c6301a7c4725a69fe60142e7f0f9",
+                    "PUB;b740a8f9090c443c960bd45f2f527cd5"
+                ],
+                disabled_features: [
+                    "use_localstorage_for_settings",
+                    "header_symbol_search",
+                    "symbol_search_hot_key"
+                ],
+                enabled_features: [
+                    "study_templates",
+                    "side_toolbar_in_fullscreen_mode",
+                    "header_in_fullscreen_mode",
+                    "use_last_visible_bar_value_mode",
+                    "tick_resolution"
+                ]
+            });
+
+            console.log('✅ Hot coin modal opened with chart for', symbol);
+
+        } catch (error) {
+            console.error('❌ Failed to load hot coin data:', error);
+            document.getElementById('modalAssetDetails').innerHTML = `
+                <div class="col-span-2 text-center text-red-400">
+                    <p>Failed to load data for ${symbol}</p>
+                    <p class="text-sm text-gray-400 mt-2">${error.message}</p>
+                </div>
+            `;
+        }
     },
 
     /**
