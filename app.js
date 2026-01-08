@@ -1279,7 +1279,8 @@ const IronLedger = {
         // Clear previous widget
         widgetContainer.innerHTML = '';
 
-        // Create new TradingView widget with LuxAlgo indicators
+        // Create new TradingView widget with Premium features
+        // PREMIUM BENEFITS: More indicators, Volume Profile, advanced tools
         new TradingView.widget({
             autosize: true,
             symbol: tvSymbol,
@@ -1293,12 +1294,35 @@ const IronLedger = {
             hide_side_toolbar: false,
             allow_symbol_change: false,
             container_id: "tradingview_widget",
+            // PREMIUM: Can load many more indicators (up to 25 vs 3 for free)
             studies: [
-                "STD;Session%1Volume%1Profile",
-                "PUB;4KMVqGQPUfFh"  // LuxAlgo Higher High Lower Low - Live
+                "STD;Session%1Volume%1Profile",           // Session Volume Profile (Premium)
+                "PUB;4KMVqGQPUfFh",                       // LuxAlgo: Higher High Lower Low - Live
+                "PUB;f55e3c6dc7a147f79f48c6c8a88be0c2",   // LuxAlgo: Price Action Concepts
+                "PUB;7662c6301a7c4725a69fe60142e7f0f9",   // LuxAlgo: Signals & Overlays
+                "PUB;b740a8f9090c443c960bd45f2f527cd5"    // LuxAlgo: Smart Money Concepts
             ],
-            disabled_features: ["use_localstorage_for_settings"],
-            enabled_features: ["study_templates"]
+            disabled_features: [
+                "use_localstorage_for_settings",
+                "header_symbol_search",                   // Disable symbol change
+                "symbol_search_hot_key"
+            ],
+            enabled_features: [
+                "study_templates",
+                "side_toolbar_in_fullscreen_mode",       // Premium: Better fullscreen
+                "header_in_fullscreen_mode",              // Premium: Header in fullscreen
+                "use_last_visible_bar_value_mode",        // Premium: Better price display
+                "tick_resolution"                         // Premium: Tick data access
+            ],
+            // Premium features
+            save_load_adapter: null,
+            custom_formatters: {
+                timeFormatter: {
+                    format: function(date) {
+                        return date.toLocaleTimeString();
+                    }
+                }
+            }
         });
 
         console.log('📊 TradingView chart updated:', symbol);
