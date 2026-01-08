@@ -53,6 +53,7 @@ const IronLedger = {
         this.showScreen('trading');
         this.updateStatusBar();
         this.fetchHotCoins(); // Auto-load hot coins on startup
+        this.autoFetchPrimaryAssets(); // Auto-fetch BTC, ETH, GOLD
         console.log('✅ IronLedger ready');
     },
 
@@ -416,6 +417,43 @@ const IronLedger = {
         this.fetchMarketData();
 
         console.log('🔥 Hot coin selected:', symbol);
+    },
+
+    /**
+     * Auto-fetch and analyze primary assets on first load
+     * Fetches BTC, ETH, and GOLD (XAUUSDT) automatically
+     */
+    async autoFetchPrimaryAssets() {
+        console.log('📊 Auto-fetching primary assets: BTC, ETH, GOLD...');
+
+        // Wait a bit for hot coins to load first
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // Primary assets to analyze
+        const primaryAssets = ['BTCUSDT', 'ETHUSDT', 'XAUUSDT'];
+
+        // Fetch data for each asset in sequence
+        for (const symbol of primaryAssets) {
+            try {
+                console.log(`📊 Fetching ${symbol}...`);
+
+                // Set the symbol in input field
+                document.getElementById('marketSymbol').value = symbol;
+
+                // Fetch market data
+                await this.fetchMarketData();
+
+                // Brief delay between fetches
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+            } catch (error) {
+                console.warn(`⚠️ Failed to auto-fetch ${symbol}:`, error);
+            }
+        }
+
+        // After all fetches, display BTC by default
+        console.log('✅ Primary assets analyzed. Displaying BTC...');
+        document.getElementById('marketSymbol').value = 'BTCUSDT';
     },
 
     /**
