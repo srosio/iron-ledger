@@ -474,17 +474,17 @@ const IronLedger = {
 
             document.getElementById('modalAssetDetails').innerHTML = `
                 <!-- Recommendation Card -->
-                <div class="bg-gray-700 rounded p-4 border border-gray-600">
-                    <h4 class="font-bold text-sm text-blue-400 mb-3">Recommendation</h4>
-                    <div class="p-3 ${recommendation.bgColor} rounded border border-gray-600 mb-3">
-                        <p class="font-bold text-center text-lg">
+                <div class="bg-gray-800 p-2 border border-gray-700">
+                    <h4 class="font-bold text-xs text-blue-400 mb-2">Recommendation</h4>
+                    <div class="p-2 ${recommendation.bgColor} mb-2">
+                        <p class="font-bold text-center text-base">
                             ${icon} ${recommendation.recommendation}
                         </p>
-                        <p class="text-center text-sm text-gray-300">
+                        <p class="text-center text-xs text-gray-300">
                             ${recommendation.confidence} Confidence
                         </p>
                     </div>
-                    <div class="text-sm text-gray-300 space-y-2">
+                    <div class="text-xs text-gray-300 space-y-1">
                         ${recommendation.reasoning.map(line =>
                             `<p>${line}</p>`
                         ).join('')}
@@ -492,52 +492,52 @@ const IronLedger = {
                 </div>
 
                 <!-- Market Data Card -->
-                <div class="bg-gray-700 rounded p-4 border border-gray-600">
-                    <h4 class="font-bold text-sm text-blue-400 mb-3">Market Data</h4>
-                    <div class="space-y-3">
+                <div class="bg-gray-800 p-2 border border-gray-700">
+                    <h4 class="font-bold text-xs text-blue-400 mb-2">Market Data</h4>
+                    <div class="space-y-2">
                         <div>
                             <p class="text-xs text-gray-400">Mark Price</p>
-                            <p class="text-xl font-mono font-bold text-white">$${markPrice.toFixed(2)}</p>
+                            <p class="text-lg font-mono font-bold text-white">$${markPrice.toFixed(2)}</p>
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-2 gap-2 text-xs">
                             <div>
-                                <p class="text-xs text-gray-400">1h Change</p>
+                                <p class="text-gray-400">1h Change</p>
                                 <p class="font-mono font-semibold ${hotCoin?.priceChange1h >= 0 ? 'text-green-400' : 'text-red-400'}">
                                     ${hotCoin?.priceChange1h >= 0 ? '+' : ''}${hotCoin?.priceChange1h?.toFixed(2) || 'N/A'}%
                                 </p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-400">24h Change</p>
+                                <p class="text-gray-400">24h Change</p>
                                 <p class="font-mono font-semibold ${priceChangePercent >= 0 ? 'text-green-400' : 'text-red-400'}">
                                     ${priceChangePercent >= 0 ? '+' : ''}${priceChangePercent.toFixed(2)}%
                                 </p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-400">Funding Rate</p>
+                                <p class="text-gray-400">Funding Rate</p>
                                 <p class="font-mono font-semibold text-blue-300">
                                     ${fundingRate.toFixed(4)}%
                                 </p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-400">Open Interest</p>
+                                <p class="text-gray-400">Open Interest</p>
                                 <p class="font-mono font-semibold text-blue-300">
                                     ${(openInterest / 1000000).toFixed(2)}M
                                 </p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-400">24h Volume</p>
+                                <p class="text-gray-400">24h Volume</p>
                                 <p class="font-mono font-semibold text-blue-300">
                                     ${(volume24h / 1000000).toFixed(2)}M
                                 </p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-400">OI Trend</p>
+                                <p class="text-gray-400">OI Trend</p>
                                 <p class="font-mono font-semibold text-yellow-300">
                                     ${oiTrend}
                                 </p>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-400">Volume Trend</p>
+                                <p class="text-gray-400">Volume Trend</p>
                                 <p class="font-mono font-semibold text-yellow-300">
                                     ${volumeTrend}
                                 </p>
@@ -848,17 +848,17 @@ const IronLedger = {
 
         document.getElementById('modalAssetDetails').innerHTML = `
             <!-- Recommendation Card -->
-            <div class="bg-gray-700 rounded p-4 border border-gray-600">
-                <h4 class="font-bold text-sm text-blue-400 mb-3">Recommendation</h4>
-                <div class="p-3 ${asset.recommendation.bgColor} rounded border border-gray-600 mb-3">
-                    <p class="font-bold text-center text-lg">
+            <div class="bg-gray-800 p-2 border border-gray-700">
+                <h4 class="font-bold text-xs text-blue-400 mb-2">Recommendation</h4>
+                <div class="p-2 ${asset.recommendation.bgColor} mb-2">
+                    <p class="font-bold text-center text-base">
                         ${icon} ${asset.recommendation.recommendation}
                     </p>
-                    <p class="text-center text-sm text-gray-300">
+                    <p class="text-center text-xs text-gray-300">
                         ${asset.recommendation.confidence} Confidence
                     </p>
                 </div>
-                <div class="text-sm text-gray-300 space-y-2">
+                <div class="text-xs text-gray-300 space-y-1">
                     ${asset.recommendation.reasoning.map(line =>
                         `<p>${line}</p>`
                     ).join('')}
@@ -866,46 +866,46 @@ const IronLedger = {
             </div>
 
             <!-- Market Data Card -->
-            <div class="bg-gray-700 rounded p-4 border border-gray-600">
-                <h4 class="font-bold text-sm text-blue-400 mb-3">Market Data</h4>
-                <div class="space-y-3">
+            <div class="bg-gray-800 p-2 border border-gray-700">
+                <h4 class="font-bold text-xs text-blue-400 mb-2">Market Data</h4>
+                <div class="space-y-2">
                     <div>
                         <p class="text-xs text-gray-400">Mark Price</p>
-                        <p class="text-xl font-mono font-bold text-white">$${asset.markPrice.toFixed(2)}</p>
+                        <p class="text-lg font-mono font-bold text-white">$${asset.markPrice.toFixed(2)}</p>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-2 gap-2 text-xs">
                         <div>
-                            <p class="text-xs text-gray-400">24h Change</p>
+                            <p class="text-gray-400">24h Change</p>
                             <p class="font-mono font-semibold ${asset.priceChangePercent >= 0 ? 'text-green-400' : 'text-red-400'}">
                                 ${asset.priceChangePercent >= 0 ? '+' : ''}${asset.priceChangePercent.toFixed(2)}%
                             </p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-400">Funding Rate</p>
+                            <p class="text-gray-400">Funding Rate</p>
                             <p class="font-mono font-semibold text-blue-300">
                                 ${asset.fundingRate.toFixed(4)}%
                             </p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-400">Open Interest</p>
+                            <p class="text-gray-400">Open Interest</p>
                             <p class="font-mono font-semibold text-blue-300">
                                 ${(asset.openInterest / 1000000).toFixed(2)}M
                             </p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-400">24h Volume</p>
+                            <p class="text-gray-400">24h Volume</p>
                             <p class="font-mono font-semibold text-blue-300">
                                 ${(asset.volume24h / 1000000).toFixed(2)}M
                             </p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-400">OI Trend</p>
+                            <p class="text-gray-400">OI Trend</p>
                             <p class="font-mono font-semibold text-yellow-300">
                                 ${asset.oiTrend}
                             </p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-400">Volume Trend</p>
+                            <p class="text-gray-400">Volume Trend</p>
                             <p class="font-mono font-semibold text-yellow-300">
                                 ${asset.volumeTrend}
                             </p>
