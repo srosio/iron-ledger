@@ -421,10 +421,10 @@ const IronLedger = {
 
     /**
      * Auto-fetch and analyze primary assets on first load
-     * Fetches BTC, ETH, and GOLD (XAUUSDT) automatically
+     * Fetches BTC, ETH, and GOLD (XAUUSDT) automatically - recommendations only, no chart display
      */
     async autoFetchPrimaryAssets() {
-        console.log('📊 Auto-fetching primary assets: BTC, ETH, GOLD...');
+        console.log('📊 Auto-fetching primary assets: BTC, ETH, GOLD (silent mode)...');
 
         // Wait a bit for hot coins to load first
         await new Promise(resolve => setTimeout(resolve, 1500));
@@ -432,16 +432,13 @@ const IronLedger = {
         // Primary assets to analyze
         const primaryAssets = ['BTCUSDT', 'ETHUSDT', 'XAUUSDT'];
 
-        // Fetch data for each asset in sequence
+        // Fetch data for each asset in sequence (silent mode - no chart display)
         for (const symbol of primaryAssets) {
             try {
-                console.log(`📊 Fetching ${symbol}...`);
+                console.log(`📊 Silently analyzing ${symbol}...`);
 
-                // Set the symbol in input field
-                document.getElementById('marketSymbol').value = symbol;
-
-                // Fetch market data
-                await this.fetchMarketData();
+                // Fetch market data silently (generates recommendations without displaying chart)
+                await this.fetchMarketDataSilent(symbol);
 
                 // Brief delay between fetches
                 await new Promise(resolve => setTimeout(resolve, 500));
@@ -451,9 +448,51 @@ const IronLedger = {
             }
         }
 
-        // After all fetches, display BTC by default
-        console.log('✅ Primary assets analyzed. Displaying BTC...');
-        document.getElementById('marketSymbol').value = 'BTCUSDT';
+        console.log('✅ Primary assets analyzed (BTC, ETH, GOLD). Click any coin to view chart.');
+    },
+
+    /**
+     * Fetch market data silently (for auto-fetch) - generates recommendations but doesn't display chart
+     * Only shows TradingView chart when user manually clicks on a coin
+     */
+    async fetchMarketDataSilent(symbol) {
+        try {
+            // Fetch from Binance Futures API (public endpoints, no auth required)
+            const [premiumData, openInterestData, statsData] = await Promise.all([
+                this.fetchBinance(`/fapi/v1/premiumIndex?symbol=${symbol}`),
+                this.fetchBinance(`/fapi/v1/openInterest?symbol=${symbol}`),
+                this.fetchBinance(`/fapi/v1/ticker/24hr?symbol=${symbol}`)
+            ]);
+
+            // Extract relevant data
+            const marketContext = {
+                symbol: symbol,
+                markPrice: parseFloat(premiumData.markPrice),
+                lastFundingRate: parseFloat(premiumData.lastFundingRate) * 100, // Convert to percentage
+                openInterest: parseFloat(openInterestData.openInterest),
+                volume: parseFloat(statsData.volume),
+                priceChangePercent: parseFloat(statsData.priceChangePercent),
+                fetchedAt: Date.now()
+            };
+
+            // Store in state (INFORMATIONAL ONLY)
+            this.state.marketContext = marketContext;
+            this.saveState();
+
+            // Auto-fill market context fields
+            this.autoFillMarketContext(marketContext);
+
+            // Analyze market context and generate recommendation (but don't display chart)
+            this.analyzeMarketContext(marketContext);
+
+            // Save symbol for future quick access
+            this.saveSymbol(symbol);
+
+            console.log(`✅ ${symbol} analyzed silently (recommendation ready, no chart)`);
+
+        } catch (error) {
+            console.warn(`⚠️ Silent fetch failed for ${symbol}:`, error);
+        }
     },
 
     /**
