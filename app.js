@@ -421,78 +421,260 @@ const IronLedger = {
 
     /**
      * Auto-fetch and analyze primary assets on first load
-     * Fetches BTC, ETH, and GOLD (XAUUSDT) automatically - recommendations only, no chart display
+     * Fetches BTC, ETH, and GOLD (XAUUSDT) and displays all three in dashboard
      */
     async autoFetchPrimaryAssets() {
-        console.log('📊 Auto-fetching primary assets: BTC, ETH, GOLD (silent mode)...');
+        console.log('📊 Auto-fetching primary assets: BTC, ETH, GOLD...');
 
         // Wait a bit for hot coins to load first
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        // Primary assets to analyze
-        const primaryAssets = ['BTCUSDT', 'ETHUSDT', 'XAUUSDT'];
+        // Primary assets to analyze with display names
+        const primaryAssets = [
+            { symbol: 'BTCUSDT', name: 'BTC', icon: '₿' },
+            { symbol: 'ETHUSDT', name: 'ETH', icon: 'Ξ' },
+            { symbol: 'XAUUSDT', name: 'GOLD', icon: '🥇' }
+        ];
 
-        // Fetch data for each asset in sequence (silent mode - no chart display)
-        for (const symbol of primaryAssets) {
+        // Fetch data for each asset in sequence and display in dashboard
+        const assetDataArray = [];
+
+        for (const asset of primaryAssets) {
             try {
-                console.log(`📊 Silently analyzing ${symbol}...`);
+                console.log(`📊 Analyzing ${asset.symbol}...`);
 
-                // Fetch market data silently (generates recommendations without displaying chart)
-                await this.fetchMarketDataSilent(symbol);
+                // Fetch market data for this asset
+                const assetData = await this.fetchPrimaryAssetData(asset.symbol);
+
+                if (assetData) {
+                    assetDataArray.push({
+                        ...assetData,
+                        name: asset.name,
+                        icon: asset.icon
+                    });
+                }
 
                 // Brief delay between fetches
                 await new Promise(resolve => setTimeout(resolve, 500));
 
             } catch (error) {
-                console.warn(`⚠️ Failed to auto-fetch ${symbol}:`, error);
+                console.warn(`⚠️ Failed to auto-fetch ${asset.symbol}:`, error);
             }
         }
 
-        console.log('✅ Primary assets analyzed (BTC, ETH, GOLD). Click any coin to view chart.');
+        // Display all three assets in dashboard
+        this.displayPrimaryAssetsDashboard(assetDataArray);
+
+        console.log('✅ Primary assets dashboard displayed (BTC, ETH, GOLD)');
     },
 
     /**
-     * Fetch market data silently (for auto-fetch) - generates recommendations but doesn't display chart
-     * Only shows TradingView chart when user manually clicks on a coin
+     * Fetch market data for a primary asset (returns data object instead of updating UI)
      */
-    async fetchMarketDataSilent(symbol) {
+    async fetchPrimaryAssetData(symbol) {
         try {
-            // Fetch from Binance Futures API (public endpoints, no auth required)
+            // Fetch from Binance Futures API
             const [premiumData, openInterestData, statsData] = await Promise.all([
                 this.fetchBinance(`/fapi/v1/premiumIndex?symbol=${symbol}`),
                 this.fetchBinance(`/fapi/v1/openInterest?symbol=${symbol}`),
                 this.fetchBinance(`/fapi/v1/ticker/24hr?symbol=${symbol}`)
             ]);
 
-            // Extract relevant data
-            const marketContext = {
-                symbol: symbol,
-                markPrice: parseFloat(premiumData.markPrice),
-                lastFundingRate: parseFloat(premiumData.lastFundingRate) * 100, // Convert to percentage
-                openInterest: parseFloat(openInterestData.openInterest),
-                volume: parseFloat(statsData.volume),
-                priceChangePercent: parseFloat(statsData.priceChangePercent),
-                fetchedAt: Date.now()
+            // Extract market data
+            const markPrice = parseFloat(premiumData.markPrice);
+            const fundingRate = parseFloat(premiumData.lastFundingRate) * 100;
+            const openInterest = parseFloat(openInterestData.openInterest);
+            const volume24h = parseFloat(statsData.volume);
+            const priceChangePercent = parseFloat(statsData.priceChangePercent);
+
+            // Calculate OI trend
+            let oiTrend = 'flat';
+            const previousOI = this.state.oiHistory[symbol];
+            if (previousOI && previousOI.value) {
+                const oiChange = ((openInterest - previousOI.value) / previousOI.value) * 100;
+                if (oiChange > 2) oiTrend = 'rising';
+                else if (oiChange < -2) oiTrend = 'falling';
+            }
+            this.state.oiHistory[symbol] = { value: openInterest, timestamp: Date.now() };
+
+            // Calculate volume trend
+            const volumeToOI = volume24h / openInterest;
+            const priceChange = Math.abs(priceChangePercent);
+            const volumeTrend = (priceChange > 3 || volumeToOI > 15) ? 'above' : 'below';
+
+            // Get recommendation
+            const recommendation = this.getRecommendationForAsset(
+                symbol,
+                fundingRate,
+                oiTrend,
+                volumeTrend
+            );
+
+            return {
+                symbol,
+                markPrice,
+                fundingRate,
+                openInterest,
+                volume24h,
+                priceChangePercent,
+                oiTrend,
+                volumeTrend,
+                recommendation
             };
 
-            // Store in state (INFORMATIONAL ONLY)
-            this.state.marketContext = marketContext;
-            this.saveState();
-
-            // Auto-fill market context fields
-            this.autoFillMarketContext(marketContext);
-
-            // Analyze market context and generate recommendation (but don't display chart)
-            this.analyzeMarketContext(marketContext);
-
-            // Save symbol for future quick access
-            this.saveSymbol(symbol);
-
-            console.log(`✅ ${symbol} analyzed silently (recommendation ready, no chart)`);
-
         } catch (error) {
-            console.warn(`⚠️ Silent fetch failed for ${symbol}:`, error);
+            console.warn(`⚠️ Failed to fetch data for ${symbol}:`, error);
+            return null;
         }
+    },
+
+    /**
+     * Get recommendation for an asset (returns recommendation object)
+     */
+    getRecommendationForAsset(symbol, fundingRate, oiTrend, volumeTrend) {
+        let recommendation = 'WAIT';
+        let reasoning = [];
+        let confidence = 'LOW';
+        let bgColor = 'bg-gray-700';
+
+        // Check for extreme funding
+        if (Math.abs(fundingRate) > 0.05) {
+            recommendation = 'WAIT';
+            confidence = 'HIGH';
+            bgColor = 'bg-yellow-900';
+            reasoning.push(`⚠️ Extreme funding (${(fundingRate).toFixed(3)}%)`);
+            reasoning.push('Market overextended');
+        }
+        // Check for dead market
+        else if (oiTrend === 'falling' && volumeTrend === 'below') {
+            recommendation = 'WAIT';
+            confidence = 'HIGH';
+            bgColor = 'bg-gray-700';
+            reasoning.push('📉 Falling OI + Low Volume');
+            reasoning.push('Dead market - avoid');
+        }
+        // LONG bias
+        else if (fundingRate <= 0.01 && oiTrend === 'rising' && volumeTrend === 'above') {
+            recommendation = 'LONG';
+            confidence = 'HIGH';
+            bgColor = 'bg-green-900';
+            reasoning.push(`✅ Funding: ${(fundingRate).toFixed(3)}%`);
+            reasoning.push('✅ Rising OI + High Volume');
+            reasoning.push('💡 Look for LONG setups');
+        }
+        // SHORT bias
+        else if (fundingRate >= 0.01 && oiTrend === 'rising' && volumeTrend === 'above') {
+            recommendation = 'SHORT';
+            confidence = 'HIGH';
+            bgColor = 'bg-red-900';
+            reasoning.push(`✅ Funding: ${(fundingRate).toFixed(3)}%`);
+            reasoning.push('✅ Rising OI + High Volume');
+            reasoning.push('💡 Look for SHORT setups');
+        }
+        // Neutral
+        else {
+            recommendation = 'WAIT';
+            confidence = 'MEDIUM';
+            bgColor = 'bg-gray-700';
+            reasoning.push('📊 Mixed signals');
+            reasoning.push('Wait for clearer setup');
+        }
+
+        return {
+            recommendation,
+            reasoning,
+            confidence,
+            bgColor,
+            timestamp: Date.now()
+        };
+    },
+
+    /**
+     * Display primary assets dashboard with all three assets
+     */
+    displayPrimaryAssetsDashboard(assets) {
+        const container = document.getElementById('primaryAssetsGrid');
+
+        if (!assets || assets.length === 0) {
+            container.innerHTML = '<p class="text-xs text-gray-500 col-span-3">No data available</p>';
+            return;
+        }
+
+        container.innerHTML = assets.map(asset => {
+            const icons = { 'LONG': '🟢', 'SHORT': '🔴', 'WAIT': '⚪' };
+            const icon = icons[asset.recommendation.recommendation] || '📊';
+
+            return `
+                <div class="bg-gray-700 rounded border border-gray-600 p-3 hover:border-blue-500 cursor-pointer transition"
+                     onclick="IronLedger.selectPrimaryAsset('${asset.symbol}')">
+                    <!-- Header -->
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">${asset.icon}</span>
+                            <span class="font-bold text-blue-400">${asset.name}</span>
+                        </div>
+                        <span class="text-xs ${asset.priceChangePercent >= 0 ? 'text-green-400' : 'text-red-400'}">
+                            ${asset.priceChangePercent >= 0 ? '+' : ''}${asset.priceChangePercent.toFixed(2)}%
+                        </span>
+                    </div>
+
+                    <!-- Price -->
+                    <div class="mb-3">
+                        <p class="text-xl font-mono font-bold text-white">
+                            $${asset.markPrice.toFixed(2)}
+                        </p>
+                    </div>
+
+                    <!-- Recommendation Badge -->
+                    <div class="mb-3 p-2 ${asset.recommendation.bgColor} rounded border border-gray-600">
+                        <p class="font-bold text-xs text-center">
+                            ${icon} ${asset.recommendation.recommendation} (${asset.recommendation.confidence})
+                        </p>
+                    </div>
+
+                    <!-- Market Data -->
+                    <div class="grid grid-cols-2 gap-2 text-xs mb-2">
+                        <div>
+                            <p class="text-gray-400">Funding</p>
+                            <p class="font-mono font-semibold text-blue-300">
+                                ${asset.fundingRate.toFixed(4)}%
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400">OI</p>
+                            <p class="font-mono font-semibold text-blue-300">
+                                ${(asset.openInterest / 1000000).toFixed(1)}M
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Reasoning -->
+                    <div class="text-xs text-gray-300 space-y-1">
+                        ${asset.recommendation.reasoning.map(line =>
+                            `<p>${line}</p>`
+                        ).join('')}
+                    </div>
+
+                    <!-- Click to view chart -->
+                    <p class="text-xs text-gray-500 mt-2 text-center">
+                        Click to view chart
+                    </p>
+                </div>
+            `;
+        }).join('');
+    },
+
+    /**
+     * Select a primary asset and show its TradingView chart
+     */
+    selectPrimaryAsset(symbol) {
+        console.log('📊 Selected primary asset:', symbol);
+
+        // Set the symbol in input field
+        document.getElementById('marketSymbol').value = symbol;
+
+        // Fetch full market data (this will display chart)
+        this.fetchMarketData();
     },
 
     /**
