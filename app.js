@@ -732,7 +732,7 @@ const IronLedger = {
             reasoning.push('📉 Falling OI + Low Volume');
             reasoning.push('Dead market - avoid');
         }
-        // LONG bias
+        // LONG bias - Best setup
         else if (fundingRate <= 0.01 && oiTrend === 'rising' && volumeTrend === 'above') {
             recommendation = 'LONG';
             confidence = 'HIGH';
@@ -741,14 +741,32 @@ const IronLedger = {
             reasoning.push('✅ Rising OI + High Volume');
             reasoning.push('💡 Look for LONG setups');
         }
-        // SHORT bias
+        // LONG bias - Alternative (negative funding + volume)
+        else if (fundingRate < 0 && volumeTrend === 'above') {
+            recommendation = 'LONG';
+            confidence = 'MEDIUM';
+            bgColor = 'bg-green-900';
+            reasoning.push(`✅ Funding: ${(fundingRate).toFixed(3)}% (shorts paying)`);
+            reasoning.push('✅ High Volume');
+            reasoning.push('💡 Potential reversal LONG');
+        }
+        // SHORT bias - Best setup
         else if (fundingRate >= 0.01 && oiTrend === 'rising' && volumeTrend === 'above') {
             recommendation = 'SHORT';
             confidence = 'HIGH';
             bgColor = 'bg-red-900';
-            reasoning.push(`✅ Funding: ${(fundingRate).toFixed(3)}%`);
+            reasoning.push(`✅ Funding: ${(fundingRate).toFixed(3)}% (longs paying)`);
             reasoning.push('✅ Rising OI + High Volume');
             reasoning.push('💡 Look for SHORT setups');
+        }
+        // SHORT bias - Alternative (high funding + volume)
+        else if (fundingRate >= 0.015 && volumeTrend === 'above') {
+            recommendation = 'SHORT';
+            confidence = 'MEDIUM';
+            bgColor = 'bg-red-900';
+            reasoning.push(`✅ Funding: ${(fundingRate).toFixed(3)}% (overcrowded)`);
+            reasoning.push('✅ High Volume');
+            reasoning.push('💡 Potential reversal SHORT');
         }
         // Neutral
         else {
