@@ -23,6 +23,9 @@
 
         /* Hidden by default */
         .hidden { display: none !important; }
+
+        /* Screen sections visible by default */
+        .screen-section { display: block !important; }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
@@ -50,7 +53,7 @@
              UNIFIED TRADING SCREEN
              ======================================== -->
         <section id="screen-trading" class="screen-section">
-            <div class="space-y-4">
+            <div class="space-y-2">
 
                 <!-- TradingView Chart -->
                 <div id="tradingviewChart" class="hidden bg-gray-700 rounded border border-gray-600 overflow-hidden">
@@ -64,29 +67,31 @@
                     <div id="tradingview_widget" style="height: 600px;"></div>
                 </div>
 
-                <!-- Primary Assets Dashboard (BTC, ETH, GOLD) -->
-                <div class="bg-gray-800 rounded-lg p-4 shadow-xl">
-                    <div class="flex justify-between items-center mb-2">
-                        <h3 class="text-sm font-bold text-blue-400">📊 Primary Assets</h3>
-                        <span class="text-xs text-gray-400">Auto-updated</span>
+                <!-- Primary Assets and Market Context Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                    <!-- Primary Assets Dashboard (BTC, ETH, GOLD) -->
+                    <div class="bg-gray-800 p-2">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-xs font-bold text-blue-400">📊 Primary Assets</h3>
+                            <span class="text-xs text-gray-400">Auto-updated</span>
+                        </div>
+                        <div id="primaryAssetsGrid" class="grid grid-cols-3 gap-2">
+                            <!-- BTC, ETH, GOLD cards will be inserted here -->
+                            <p class="text-xs text-gray-500 col-span-3">Loading...</p>
+                        </div>
                     </div>
-                    <div id="primaryAssetsGrid" class="grid grid-cols-3 gap-2">
-                        <!-- BTC, ETH, GOLD cards will be inserted here -->
-                        <p class="text-xs text-gray-500 col-span-3">Loading...</p>
-                    </div>
-                </div>
 
-                <!-- Market Context -->
-                <div class="bg-gray-800 rounded-lg p-4 shadow-xl">
-                    <h3 class="text-lg font-bold mb-4 text-blue-400">Market Context</h3>
+                    <!-- Market Context -->
+                    <div class="bg-gray-800 p-2">
+                    <h3 class="text-xs font-bold mb-2 text-blue-400">Market Context</h3>
 
                     <!-- Fetch Status -->
-                    <div id="marketDataStatus" class="mb-3 text-sm hidden"></div>
+                    <div id="marketDataStatus" class="mb-2 text-xs hidden"></div>
 
                     <!-- Live Data Display -->
-                    <div id="marketDataDisplay" class="hidden p-3 bg-gray-700 rounded border border-gray-600 mb-4">
-                        <p class="text-xs text-gray-400 mb-2">📊 Live Data</p>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <div id="marketDataDisplay" class="hidden p-2 bg-gray-700 border border-gray-600 mb-2">
+                        <p class="text-xs text-gray-400 mb-1">📊 Live Data</p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                             <div>
                                 <p class="text-gray-500 text-xs">Mark Price</p>
                                 <p id="marketMarkPrice" class="font-mono font-semibold text-blue-300">--</p>
@@ -107,24 +112,24 @@
                     </div>
 
                     <!-- Quick Stats Display -->
-                    <div id="quickStatsDisplay" class="hidden mb-4 p-3 bg-gray-700 rounded border border-gray-600">
-                        <p class="font-bold text-sm mb-2 text-blue-400">📈 Quick Stats</p>
-                        <div id="quickStatsContent" class="text-sm space-y-1"></div>
+                    <div id="quickStatsDisplay" class="hidden mb-2 p-2 bg-gray-700 border border-gray-600">
+                        <p class="font-bold text-xs mb-1 text-blue-400">📈 Quick Stats</p>
+                        <div id="quickStatsContent" class="text-xs space-y-1"></div>
                     </div>
 
                     <!-- Market Context Recommendation -->
-                    <div id="marketRecommendation" class="hidden mb-4 p-4 rounded border-2">
-                        <div class="flex justify-between items-start mb-2">
-                            <p class="font-bold text-lg" id="recommendationTitle">📊 Market Analysis</p>
+                    <div id="marketRecommendation" class="hidden mb-2 p-2 border-2">
+                        <div class="flex justify-between items-start mb-1">
+                            <p class="font-bold text-xs" id="recommendationTitle">📊 Market Analysis</p>
                             <button type="button" onclick="IronLedger.shareToTelegram()"
-                                    class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition flex items-center gap-1">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                    class="px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs transition flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.84 8.673c-.139.645-.502.804-1.016.501l-2.806-2.069-1.353 1.302c-.15.15-.275.275-.563.275l.201-2.851 5.188-4.686c.226-.201-.049-.312-.351-.111l-6.406 4.03-2.76-.863c-.6-.188-.612-.6.126-.889l10.79-4.156c.501-.188.938.111.775.889z"/>
                                 </svg>
                                 Share
                             </button>
                         </div>
-                        <div id="recommendationContent" class="text-sm space-y-1"></div>
+                        <div id="recommendationContent" class="text-xs space-y-1"></div>
                     </div>
 
                     <!-- Symbol Input -->
@@ -172,6 +177,7 @@
                         </div>
                         <p class="text-xs text-gray-400 mt-1">Sorted by highest 24h gain • Min $10M volume</p>
                     </div>
+                </div>
                 </div>
 
             </div>
