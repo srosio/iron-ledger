@@ -1,9 +1,8 @@
 /**
  * SweepAgent
  *
- * This system enforces strict trading rules for intraday crypto futures trading.
- * It does NOT generate signals, connect to exchanges, or automate execution.
- * Its sole purpose is to enforce discipline and log trades.
+ * Market analysis tool for crypto futures trading.
+ * Provides market context, recommendations, and TradingView integration.
  */
 
 const IronLedger = {
