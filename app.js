@@ -1012,23 +1012,8 @@ const IronLedger = {
      * Setup event listeners
      */
     setupEventListeners() {
-        // Confirm form
-        document.getElementById('confirmForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.confirmTrade();
-        });
-
-        // Log form
-        document.getElementById('logForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.completeTrade();
-        });
-
-        // Log trade selector
-        document.getElementById('logTradeSelect').addEventListener('change', (e) => {
-            this.state.activeTradeId = e.target.value;
-            this.updateLogForm();
-        });
+        // No event listeners needed - all interactions are via onclick attributes
+        console.log('✅ Event listeners setup (using inline handlers)');
     },
 
     /**
