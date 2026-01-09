@@ -49,7 +49,6 @@ const IronLedger = {
         this.populateSavedSymbols();
         this.setupEventListeners();
         this.startTimers();
-        this.showScreen('trading');
         this.updateStatusBar();
         this.fetchHotCoins(); // Auto-load hot coins on startup
         this.autoFetchPrimaryAssets(); // Auto-fetch BTC, ETH, GOLD
